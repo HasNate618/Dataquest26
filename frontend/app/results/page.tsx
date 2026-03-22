@@ -71,10 +71,10 @@ function toTitle(value: string): string {
 }
 
 function levelColor(label: string): string {
-  if (label === "High") return "#ff6464";
-  if (label === "Moderate") return "#ffd166";
-  if (label === "Mild") return "#8ecae6";
-  return "#9be564";
+  if (label === "High") return "#ef4444";      // red for high risk
+  if (label === "Moderate") return "#f59e0b";  // amber for moderate
+  if (label === "Mild") return "#3b82f6";      // blue for mild
+  return "#10b981";                             // green for low
 }
 
 function formatTooltipValue(value: unknown): string {
@@ -93,10 +93,11 @@ function formatTooltipValue(value: unknown): string {
 function groupColor(group: string): string {
   const palette: Record<string, string> = {
     gaming_load: "#8b5cf6",      // purple
-    gaming_spend: "#6366f1",     // indigo
-    health_habits: "#3b82f6",    // blue
+    gaming_spend: "#f59e0b",     // amber
+    health_habits: "#10b981",    // green
     game_context: "#06b6d4",     // cyan
-    context: "#a78bfa",          // light purple
+    context: "#ec4899",          // pink
+    sleep_process: "#6366f1",    // indigo
     other: "#94a3b8",            // slate
   };
   return palette[group] ?? "#60a5fa";
@@ -191,10 +192,12 @@ function IssueContributorPie({
               label={(props) => {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const percent = ((props as any).percent as number) || 0;
+                if (percent < 0.03) return ""; // Hide labels for very small slices
                 return `${(percent * 100).toFixed(0)}%`;
               }}
               labelLine={false}
               fill="#8884d8"
+              style={{ fontSize: "13px", fontWeight: "600" }}
             >
               {chartData.map((entry) => (
                 <Cell key={`${issueName}-${entry.name}`} fill={entry.fill} />
@@ -210,8 +213,9 @@ function IssueContributorPie({
               }}
             />
             <Legend 
-              wrapperStyle={{ fontSize: "11px" }}
+              wrapperStyle={{ fontSize: "12px", paddingTop: "16px" }}
               iconType="circle"
+              iconSize={10}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -288,8 +292,8 @@ export default function ResultsPage() {
 
         {/* Summary Card */}
         <div className="card-pixel mb-14 md:mb-16 w-full">
-          <p className="font-pixel text-gray-400 tracking-widest mb-8" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>MODEL SUMMARY</p>
-          <div className="space-y-5 md:space-y-6">
+          <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>MODEL SUMMARY</p>
+          <div className="space-y-6 md:space-y-7">
             <p className="font-mono text-sm text-gray-300">Primary model: <span className="text-white font-semibold">{result.model}</span></p>
             <p className="font-mono text-sm text-gray-300">
               Overall wellbeing risk:{" "}
@@ -305,7 +309,7 @@ export default function ResultsPage() {
 
         {/* Issue Breakdown */}
         <div className="card-pixel mb-14 md:mb-16 w-full">
-          <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>ISSUE RISK BREAKDOWN</p>
+          <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>ISSUE RISK BREAKDOWN</p>
           <div className="space-y-4">
             {result.issues.map((issue) => (
               <Meter key={issue.issue} issue={issue} />
@@ -316,31 +320,31 @@ export default function ResultsPage() {
         {/* Recommendations */}
         {recommendations.length > 0 ? (
           <div className="card-pixel mb-10 md:mb-14 w-full">
-            <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">AI RECOMMENDATIONS — RANKED BY IMPACT</p>
-            <div className="space-y-4">
+            <p className="font-pixel text-gray-300 text-xs tracking-widest mb-10" style={{ fontSize: "0.95rem", letterSpacing: "0.12em" }}>AI RECOMMENDATIONS — RANKED BY IMPACT</p>
+            <div className="space-y-6">
               {recommendations.slice(0, 4).map((rec) => (
                 <div
                   key={`${rec.rank}-${rec.title}`}
-                  className={`p-5 border rounded ${
+                  className={`p-6 border-2 rounded ${
                     rec.type === "warning"
-                      ? "border-orange-700/50 bg-orange-950/20"
-                      : "border-green-700/50 bg-green-950/20"
+                      ? "border-orange-500/60 bg-orange-950/20"
+                      : "border-emerald-500/60 bg-emerald-950/20"
                   }`}
                 >
-                  <div className="flex justify-between items-start gap-4 mb-3">
+                  <div className="flex justify-between items-start gap-4 mb-4">
                     <div className="flex-1">
-                      <p className="font-mono text-sm text-white font-semibold mb-1">{rec.rank}. {rec.title}</p>
+                      <p className="font-mono text-sm text-white font-semibold mb-2">{rec.rank}. {rec.title}</p>
                       {rec.action && (
-                        <p className="text-[11px] font-mono text-gray-400">{rec.action}</p>
+                        <p className="text-[11px] font-mono text-gray-400 mt-1">{rec.action}</p>
                       )}
                     </div>
                     {rec.impact_pct > 0 && rec.type !== "warning" && (
-                      <span className="text-xs font-mono px-2 py-1 bg-green-900/50 text-green-300 rounded whitespace-nowrap">
+                      <span className="text-xs font-mono px-3 py-1.5 bg-emerald-900/50 text-emerald-300 rounded whitespace-nowrap font-semibold">
                         -{rec.impact_pct.toFixed(1)}pp
                       </span>
                     )}
                   </div>
-                  <p className="font-mono text-[12px] text-gray-300 whitespace-pre-line leading-relaxed">{rec.detail}</p>
+                  <p className="font-mono text-[12px] text-gray-300 whitespace-pre-line leading-relaxed mt-3">{rec.detail}</p>
                 </div>
               ))}
             </div>
@@ -350,26 +354,26 @@ export default function ResultsPage() {
         {/* Better Scenario Visualization */}
         {scenarioDataForChart.length > 0 ? (
           <div className="card-pixel mb-10 md:mb-14 w-full">
-            <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">INTERVENTION IMPACT — WHAT IF SCENARIOS</p>
+            <p className="font-pixel text-gray-300 text-xs tracking-widest mb-10" style={{ fontSize: "1rem", letterSpacing: "0.12em" }}>INTERVENTION IMPACT — WHAT IF SCENARIOS</p>
             
             {/* Quick stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-              <div className="border border-gray-700 p-4 bg-black/40">
-                <p className="text-[10px] text-gray-500 tracking-widest mb-2">CURRENT RISK</p>
-                <p className="text-lg font-semibold text-white">{baselineRisk.toFixed(1)}%</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-5 mb-10">
+              <div className="border-2 border-gray-700 p-5 bg-black/40">
+                <p className="text-[10px] text-gray-500 tracking-widest mb-3">CURRENT RISK</p>
+                <p className="text-xl font-semibold text-white">{baselineRisk.toFixed(1)}%</p>
               </div>
-              <div className="border border-green-700/50 p-4 bg-green-950/20">
-                <p className="text-[10px] text-green-400 tracking-widest mb-2">BEST CASE</p>
-                <p className="text-lg font-semibold text-green-300">{bestScenario.percent.toFixed(1)}%</p>
+              <div className="border-2 border-emerald-500/50 p-5 bg-emerald-950/20">
+                <p className="text-[10px] text-emerald-400 tracking-widest mb-3">BEST CASE</p>
+                <p className="text-xl font-semibold text-emerald-300">{bestScenario.percent.toFixed(1)}%</p>
               </div>
-              <div className="border border-blue-700/50 p-4 bg-blue-950/20">
-                <p className="text-[10px] text-blue-400 tracking-widest mb-2">POTENTIAL SAVINGS</p>
-                <p className="text-lg font-semibold text-blue-300">{bestImprovement}pp</p>
+              <div className="border-2 border-cyan-500/50 p-5 bg-cyan-950/20">
+                <p className="text-[10px] text-cyan-400 tracking-widest mb-3">POTENTIAL SAVINGS</p>
+                <p className="text-xl font-semibold text-cyan-300">{bestImprovement}pp</p>
               </div>
             </div>
 
             {/* Bar chart */}
-            <div style={{ width: "100%", height: 340 }} className="mb-8">
+            <div style={{ width: "100%", height: 340 }} className="mb-10">
               <ResponsiveContainer>
                 <BarChart data={scenarioDataForChart}>
                   <XAxis dataKey="scenario" tick={{ fill: "#9ca3af", fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={80} />
@@ -391,7 +395,7 @@ export default function ResultsPage() {
                     {scenarioDataForChart.map((entry) => (
                       <Cell
                         key={entry.scenario}
-                        fill={entry.delta <= 0 ? "#22c55e" : "#ff6464"}
+                        fill={entry.delta <= 0 ? "#10b981" : "#f59e0b"}
                         onClick={() =>
                           setSelectedScenario(
                             selectedScenario === entry.fullScenario.scenario
@@ -399,7 +403,7 @@ export default function ResultsPage() {
                               : entry.fullScenario.scenario
                           )
                         }
-                        style={{ cursor: "pointer", opacity: 0.8 }}
+                        style={{ cursor: "pointer", opacity: 0.85 }}
                       />
                     ))}
                   </Bar>
@@ -424,7 +428,7 @@ export default function ResultsPage() {
                     <span className="font-mono text-sm text-white">{row.scenario}</span>
                     <span
                       className={`font-mono text-sm font-semibold ${
-                        row.delta <= 0 ? "text-green-400" : "text-red-400"
+                        row.delta <= 0 ? "text-blue-400" : "text-purple-400"
                       }`}
                     >
                       {row.delta > 0 ? "+" : ""}{row.delta.toFixed(2)}pp
@@ -440,7 +444,7 @@ export default function ResultsPage() {
                       </p>
                       <p>
                         <span className="text-gray-500">Change:</span>{" "}
-                        <span className={row.delta <= 0 ? "text-green-400" : "text-red-400"}>
+                        <span className={row.delta <= 0 ? "text-blue-400" : "text-purple-400"}>
                           {row.delta > 0 ? "+" : ""}{row.delta.toFixed(2)} percentage points
                         </span>
                       </p>
@@ -455,7 +459,7 @@ export default function ResultsPage() {
         {/* Contributor Pie Charts */}
         {issueContributorEntries.length > 0 ? (
           <div className="card-pixel mb-14 md:mb-16 w-full">
-            <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>CONTRIBUTOR BREAKDOWN</p>
+            <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>CONTRIBUTOR BREAKDOWN</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {issueContributorEntries.map(([issueName, contributorData]) => (
                 <IssueContributorPie key={issueName} issueName={issueName} data={contributorData} />
@@ -467,12 +471,12 @@ export default function ResultsPage() {
         {/* Top Contributors */}
         {result.issue_top_contributors ? (
           <div className="card-pixel mb-14 md:mb-16 w-full">
-            <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>TOP CONTRIBUTORS</p>
+            <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>TOP CONTRIBUTORS</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {Object.entries(result.issue_top_contributors).map(([issueName, contributors]) => (
                 <div key={issueName} className="border-2 border-gray-700 p-5 md:p-6 bg-black/40">
-                  <p className="font-mono text-xs text-gray-500 tracking-widest mb-5">{toTitle(issueName)}</p>
-                  <div className="space-y-4">
+                  <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">{toTitle(issueName)}</p>
+                  <div className="space-y-5">
                     {contributors.slice(0, 3).map((contributor) => (
                       <div key={`${issueName}-${contributor.feature}`} className="flex justify-between gap-4 text-xs font-mono">
                         <span className="text-gray-200">{toTitle(contributor.feature)} <span className="text-gray-500">({toTitle(contributor.group)})</span></span>
@@ -488,7 +492,7 @@ export default function ResultsPage() {
 
         {/* Input Profile */}
         <div className="card-pixel mb-14 md:mb-16 w-full">
-          <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>INPUT PROFILE</p>
+          <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>INPUT PROFILE</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {result.feature_order.map((fieldName) => (
               <div key={fieldName} className="border-2 border-gray-700 p-4 md:p-5 bg-black/40">
