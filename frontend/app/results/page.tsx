@@ -360,39 +360,6 @@ export default function ResultsPage() {
           </p>
         </div>
 
-        <div className="card-pixel mb-8">
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-4">
-            MODEL SUMMARY
-          </p>
-          <p className="font-mono text-sm text-gray-300 mb-3">
-            Primary model: <span className="text-white">{result.model}</span>
-          </p>
-          {personaName ? (
-            <p className="font-mono text-sm text-gray-300 mb-3">
-              Persona group: <span className="text-white">{personaName}</span>
-              {personaCluster !== null ? (
-                <span className="text-gray-500">
-                  {" "}
-                  (Cluster {personaCluster})
-                </span>
-              ) : null}
-            </p>
-          ) : null}
-          <p className="font-mono text-sm text-gray-300 mb-3">
-            Overall wellbeing risk:{" "}
-            <span
-              style={{ color: levelColor(result.overall.label) }}
-              className="font-semibold"
-            >
-              {result.overall.label.toUpperCase()} (
-              {result.overall.percent.toFixed(1)}%)
-            </span>
-          </p>
-          <p className="font-mono text-sm text-gray-300">
-            Highest issue risk:{" "}
-            <span className="text-white">{topIssueLabel}</span>
-          </p>
-        </div>
         {/* Summary Card */}
         <div className="card-pixel mb-14 md:mb-16 w-full">
           <p
@@ -420,6 +387,17 @@ export default function ResultsPage() {
               Highest issue risk:{" "}
               <span className="text-white font-semibold">{topIssueLabel}</span>
             </p>
+            {personaName ? (
+              <p className="font-mono text-sm text-gray-300 mb-3">
+                Persona group: <span className="text-white">{personaName}</span>
+                {personaCluster !== null ? (
+                  <span className="text-gray-500">
+                    {" "}
+                    (Cluster {personaCluster})
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
           </div>
         </div>
 
