@@ -126,6 +126,76 @@ def _local_feature_contrib(
     return contrib_df
 
 
+def _generate_recommendations(
+    scenarios: list[dict[str, Any]],
+    issues: list[dict[str, Any]],
+    overall_probability: float,
+) -> list[dict[str, Any]]:
+    """Generate actionable recommendations based on scenarios and issues."""
+    baseline_scenario = next((s for s in scenarios if s["scenario"] == "baseline"), None)
+    if not baseline_scenario:
+        return []
+
+    baseline_prob = baseline_scenario["probability"]
+    
+    # Rank scenarios by impact (most negative delta first)
+    ranked = sorted(
+        [s for s in scenarios if s["scenario"] != "baseline"],
+        key=lambda x: x["delta_vs_baseline"],
+    )[:3]
+    
+    recommendations = []
+    for i, scenario in enumerate(ranked, 1):
+        scenario_name = scenario["scenario"].replace("_", " ").title()
+        impact_pct = abs(scenario["delta_vs_baseline"] * 100)
+        new_prob_pct = scenario["percent"]
+        
+        # Generate description based on scenario
+        if "gaming_hours" in scenario["scenario"]:
+            hours_reduced = int(scenario["scenario"].split("_")[2])
+            desc = f"Reduce daily gaming by {hours_reduced} hours"
+            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp)"
+        elif "exercise" in scenario["scenario"]:
+            desc = "Add 2 more hours of exercise per week"
+            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp)"
+        elif "spending" in scenario["scenario"]:
+            desc = "Reduce game spending by 30%"
+            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp)"
+        elif "combined" in scenario["scenario"]:
+            desc = "Complete healthy lifestyle shift (all changes combined)"
+            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp) — Most effective!"
+        else:
+            continue
+        
+        recommendations.append(
+            {
+                "rank": i,
+                "title": desc,
+                "detail": detail,
+                "impact_pct": round(impact_pct, 1),
+                "new_risk_pct": round(new_prob_pct, 1),
+            }
+        )
+    
+    # Add issue-specific warnings if any high-risk issues
+    high_risk_issues = [iss for iss in issues if iss["probability"] >= 0.5]
+    if high_risk_issues:
+        top_issue = high_risk_issues[0]
+        issue_name = top_issue["issue"].replace("_", " ").title()
+        recommendations.append(
+            {
+                "rank": len(recommendations) + 1,
+                "type": "warning",
+                "title": f"⚠️ High {issue_name} Risk Detected",
+                "detail": f"{issue_name} probability is {top_issue['percent']:.1f}%. Consider prioritizing recommendations above.",
+                "impact_pct": 0,
+                "new_risk_pct": top_issue["percent"],
+            }
+        )
+    
+    return recommendations
+
+
 def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     if not artifact_path.exists():
         raise FileNotFoundError(f"Model artifact not found: {artifact_path}")
@@ -242,6 +312,9 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
 
     scenario_ranked = sorted(scenarios, key=lambda x: x["probability"])
 
+    # Generate recommendations
+    recommendations = _generate_recommendations(scenario_ranked, issues_sorted, overall_probability)
+
     return {
         "model": type(overall_model.named_steps["model"]).__name__,
         "feature_order": feature_order,
@@ -256,6 +329,7 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
         "issue_contributor_groups": contributor_groups_by_issue,
         "issue_top_contributors": top_contributors_by_issue,
         "overall_scenarios": scenario_ranked,
+        "recommendations": recommendations,
     }
 
 

@@ -58,6 +58,15 @@ interface ScenarioPayload {
   delta_vs_baseline: number;
 }
 
+interface RecommendationPayload {
+  rank: number;
+  title: string;
+  detail: string;
+  impact_pct: number;
+  new_risk_pct: number;
+  type?: string;
+}
+
 interface AnalysisResponsePayload {
   model: string;
   feature_order: string[];
@@ -72,6 +81,7 @@ interface AnalysisResponsePayload {
   issue_contributor_groups?: Record<string, ContributorGroupPayload[]>;
   issue_top_contributors?: Record<string, TopContributorPayload[]>;
   overall_scenarios?: ScenarioPayload[];
+  recommendations?: RecommendationPayload[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -235,6 +245,19 @@ function isScenarioPayload(value: unknown): value is ScenarioPayload {
   );
 }
 
+function isRecommendationPayload(value: unknown): value is RecommendationPayload {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.title === "string" &&
+    typeof value.detail === "string" &&
+    Number.isFinite(value.rank) &&
+    Number.isFinite(value.impact_pct) &&
+    Number.isFinite(value.new_risk_pct)
+  );
+}
+
 function isAnalysisResponsePayload(value: unknown): value is AnalysisResponsePayload {
   if (!isRecord(value)) {
     return false;
@@ -295,6 +318,13 @@ function isAnalysisResponsePayload(value: unknown): value is AnalysisResponsePay
   if (
     value.overall_scenarios !== undefined &&
     (!Array.isArray(value.overall_scenarios) || !value.overall_scenarios.every((item) => isScenarioPayload(item)))
+  ) {
+    return false;
+  }
+
+  if (
+    value.recommendations !== undefined &&
+    (!Array.isArray(value.recommendations) || !value.recommendations.every((item) => isRecommendationPayload(item)))
   ) {
     return false;
   }
