@@ -1,0 +1,116 @@
+{
+  "data_path": "/home/nate/Projects/Dataquest26/data/Gaming and Mental Health.csv",
+  "rows": 1000,
+  "best_overall_model": "RandomForest",
+  "best_overall_metrics": {
+    "accuracy": 0.796,
+    "precision": 0.6,
+    "recall": 0.75,
+    "f1": 0.6666666666666666,
+    "roc_auc": 0.8981900452488688
+  },
+  "top_overall_features": [
+    {
+      "feature": "daily_gaming_hours",
+      "importance": 0.2568382068996318
+    },
+    {
+      "feature": "monthly_game_spending_usd",
+      "importance": -0.00045422460473882876
+    },
+    {
+      "feature": "gaming_platform",
+      "importance": -0.0013451857119576305
+    },
+    {
+      "feature": "years_gaming",
+      "importance": -0.0038793457394276755
+    },
+    {
+      "feature": "primary_game",
+      "importance": -0.0043515584905281955
+    }
+  ],
+  "issue_best_models": [
+    {
+      "issue": "dysregulation_problem",
+      "track": "augmented",
+      "model": "GradientBoosting",
+      "f1": 0.5677966101694916,
+      "roc_auc": 0.5994618489333078,
+      "reliability_flag": "weak"
+    },
+    {
+      "issue": "dysregulation_problem",
+      "track": "cause_core",
+      "model": "GradientBoosting",
+      "f1": 0.5495495495495496,
+      "roc_auc": 0.6257287462361458,
+      "reliability_flag": "weak"
+    },
+    {
+      "issue": "emotional_problem",
+      "track": "augmented",
+      "model": "LogisticRegression",
+      "f1": 0.37777777777777777,
+      "roc_auc": 0.5496775184275184,
+      "reliability_flag": "weak"
+    },
+    {
+      "issue": "emotional_problem",
+      "track": "cause_core",
+      "model": "LogisticRegression",
+      "f1": 0.37362637362637363,
+      "roc_auc": 0.5589680589680589,
+      "reliability_flag": "weak"
+    },
+    {
+      "issue": "productivity_problem",
+      "track": "augmented",
+      "model": "GradientBoosting",
+      "f1": 0.6141078838174274,
+      "roc_auc": 0.7038828689370484,
+      "reliability_flag": "reliable"
+    },
+    {
+      "issue": "productivity_problem",
+      "track": "cause_core",
+      "model": "RandomForest",
+      "f1": 0.6456692913385826,
+      "roc_auc": 0.7162022703818369,
+      "reliability_flag": "reliable"
+    },
+    {
+      "issue": "sleep_problem",
+      "track": "augmented",
+      "model": "GradientBoosting",
+      "f1": 0.8155844155844156,
+      "roc_auc": 0.6970208845208845,
+      "reliability_flag": "reliable"
+    },
+    {
+      "issue": "sleep_problem",
+      "track": "cause_core",
+      "model": "GradientBoosting",
+      "f1": 0.8091603053435115,
+      "roc_auc": 0.6716062653562653,
+      "reliability_flag": "reliable"
+    },
+    {
+      "issue": "social_isolation_problem",
+      "track": "augmented",
+      "model": "RandomForest",
+      "f1": 0.7669172932330827,
+      "roc_auc": 0.9390645586297759,
+      "reliability_flag": "reliable"
+    },
+    {
+      "issue": "social_isolation_problem",
+      "track": "cause_core",
+      "model": "RandomForest",
+      "f1": 0.7941176470588235,
+      "roc_auc": 0.9267951251646904,
+      "reliability_flag": "reliable"
+    }
+  ]
+}
