@@ -90,6 +90,41 @@ def _probability_label(probability: float) -> str:
     return "Low"
 
 
+def _local_feature_contrib(
+    profile: dict[str, Any],
+    issue_model: Any,
+    issue_features: list[str],
+    feature_ref: dict[str, Any],
+) -> pd.DataFrame:
+    baseline_row = pd.DataFrame([profile], columns=issue_features)
+    baseline_prob = float(issue_model.predict_proba(baseline_row)[:, 1][0])
+
+    rows: list[dict[str, Any]] = []
+    for feature in issue_features:
+        perturbed = dict(profile)
+        perturbed[feature] = feature_ref[feature]
+        perturbed_row = pd.DataFrame([perturbed], columns=issue_features)
+        perturbed_prob = float(issue_model.predict_proba(perturbed_row)[:, 1][0])
+        delta = perturbed_prob - baseline_prob
+        rows.append(
+            {
+                "feature": feature,
+                "baseline_prob": baseline_prob,
+                "perturbed_prob": perturbed_prob,
+                "delta": delta,
+                "abs_delta": abs(delta),
+            }
+        )
+
+    contrib_df = pd.DataFrame(rows).sort_values("abs_delta", ascending=False).reset_index(drop=True)
+    total = float(contrib_df["abs_delta"].sum())
+    if total <= 1e-12:
+        contrib_df["share_pct"] = 100.0 / max(len(contrib_df), 1)
+    else:
+        contrib_df["share_pct"] = 100.0 * contrib_df["abs_delta"] / total
+    return contrib_df
+
+
 def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     if not artifact_path.exists():
         raise FileNotFoundError(f"Model artifact not found: {artifact_path}")
@@ -105,6 +140,20 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
     overall_probability = float(overall_model.predict_proba(one_row)[:, 1][0])
     overall_percent = round(overall_probability * 100, 1)
 
+    # Reference profile values for local perturbation explanation.
+    ref_values: dict[str, Any] = {}
+    for feature in feature_order:
+        value = profile[feature]
+        if isinstance(value, str):
+            ref_values[feature] = "Unknown"
+        else:
+            # Neutral baseline for numeric features.
+            lower, upper = NUMERIC_RANGES[feature]
+            ref_values[feature] = float((lower + upper) / 2.0)
+
+    contributor_groups_by_issue: dict[str, list[dict[str, Any]]] = {}
+    top_contributors_by_issue: dict[str, list[dict[str, Any]]] = {}
+
     issues = []
     for issue_name, issue_model in bundle["issue_models"].items():
         issue_features = bundle["issue_feature_sets"][issue_name]
@@ -119,8 +168,78 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
             }
         )
 
+        contrib_df = _local_feature_contrib(profile, issue_model, issue_features, ref_values)
+        contrib_df["cause_group"] = contrib_df["feature"].map(bundle["cause_group_map"]).fillna("other")
+
+        group_df = (
+            contrib_df.groupby("cause_group", as_index=False)["abs_delta"]
+            .sum()
+            .sort_values("abs_delta", ascending=False)
+        )
+        group_total = float(group_df["abs_delta"].sum())
+        if group_total <= 1e-12:
+            group_df["share_pct"] = 100.0 / max(len(group_df), 1)
+        else:
+            group_df["share_pct"] = 100.0 * group_df["abs_delta"] / group_total
+
+        contributor_groups_by_issue[issue_name] = [
+            {
+                "group": str(row["cause_group"]),
+                "share_pct": round(float(row["share_pct"]), 2),
+            }
+            for _, row in group_df.iterrows()
+        ]
+
+        top_contributors_by_issue[issue_name] = [
+            {
+                "feature": str(row["feature"]),
+                "group": str(row["cause_group"]),
+                "share_pct": round(float(row["share_pct"]), 2),
+                "delta": round(float(row["delta"]), 6),
+            }
+            for _, row in contrib_df.head(5).iterrows()
+        ]
+
     issues_sorted = sorted(issues, key=lambda item: item["probability"], reverse=True)
     top_issue = issues_sorted[0] if issues_sorted else None
+
+    # Intervention scenarios at overall-risk level.
+    def scenario_payloads(base: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        return {
+            "baseline": dict(base),
+            "gaming_hours_-2": {**base, "daily_gaming_hours": max(0.0, float(base["daily_gaming_hours"]) - 2.0)},
+            "gaming_hours_-4": {**base, "daily_gaming_hours": max(0.0, float(base["daily_gaming_hours"]) - 4.0)},
+            "exercise_+2h": {**base, "exercise_hours_weekly": min(40.0, float(base["exercise_hours_weekly"]) + 2.0)},
+            "spending_-30pct": {
+                **base,
+                "monthly_game_spending_usd": max(0.0, float(base["monthly_game_spending_usd"]) * 0.7),
+            },
+            "combined_healthy_shift": {
+                **base,
+                "daily_gaming_hours": max(0.0, float(base["daily_gaming_hours"]) - 3.0),
+                "exercise_hours_weekly": min(40.0, float(base["exercise_hours_weekly"]) + 2.0),
+                "monthly_game_spending_usd": max(0.0, float(base["monthly_game_spending_usd"]) * 0.8),
+            },
+        }
+
+    scenarios: list[dict[str, Any]] = []
+    for scenario_name, scenario_profile in scenario_payloads(profile).items():
+        scenario_row = pd.DataFrame([scenario_profile], columns=feature_order)
+        scenario_prob = float(overall_model.predict_proba(scenario_row)[:, 1][0])
+        scenarios.append(
+            {
+                "scenario": scenario_name,
+                "probability": round(scenario_prob, 6),
+                "percent": round(scenario_prob * 100, 1),
+                "label": _probability_label(scenario_prob),
+            }
+        )
+
+    baseline_prob = next(item["probability"] for item in scenarios if item["scenario"] == "baseline")
+    for scenario in scenarios:
+        scenario["delta_vs_baseline"] = round(float(scenario["probability"] - baseline_prob), 6)
+
+    scenario_ranked = sorted(scenarios, key=lambda x: x["probability"])
 
     return {
         "model": type(overall_model.named_steps["model"]).__name__,
@@ -133,6 +252,9 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
         "issues": issues_sorted,
         "top_issue": top_issue,
         "input_profile": profile,
+        "issue_contributor_groups": contributor_groups_by_issue,
+        "issue_top_contributors": top_contributors_by_issue,
+        "overall_scenarios": scenario_ranked,
     }
 
 

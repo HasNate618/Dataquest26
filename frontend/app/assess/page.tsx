@@ -92,6 +92,18 @@ interface AnalysisResult {
     label: string;
   } | null;
   input_profile: Record<string, string | number>;
+  issue_contributor_groups?: Record<string, Array<{ group: string; share_pct: number }>>;
+  issue_top_contributors?: Record<
+    string,
+    Array<{ feature: string; group: string; share_pct: number; delta: number }>
+  >;
+  overall_scenarios?: Array<{
+    scenario: string;
+    probability: number;
+    percent: number;
+    label: string;
+    delta_vs_baseline: number;
+  }>;
 }
 
 interface StoredAnalysis {

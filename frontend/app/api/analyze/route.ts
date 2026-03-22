@@ -36,6 +36,26 @@ interface IssueRiskPayload {
   label: string;
 }
 
+interface ContributorGroupPayload {
+  group: string;
+  share_pct: number;
+}
+
+interface TopContributorPayload {
+  feature: string;
+  group: string;
+  share_pct: number;
+  delta: number;
+}
+
+interface ScenarioPayload {
+  scenario: string;
+  probability: number;
+  percent: number;
+  label: string;
+  delta_vs_baseline: number;
+}
+
 interface AnalysisResponsePayload {
   model: string;
   feature_order: string[];
@@ -47,6 +67,9 @@ interface AnalysisResponsePayload {
   issues: IssueRiskPayload[];
   top_issue: IssueRiskPayload | null;
   input_profile: AnalysisRequestPayload;
+  issue_contributor_groups?: Record<string, ContributorGroupPayload[]>;
+  issue_top_contributors?: Record<string, TopContributorPayload[]>;
+  overall_scenarios?: ScenarioPayload[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -177,6 +200,38 @@ function isIssueRiskPayload(value: unknown): value is IssueRiskPayload {
   );
 }
 
+function isContributorGroupPayload(value: unknown): value is ContributorGroupPayload {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value.group === "string" && Number.isFinite(value.share_pct);
+}
+
+function isTopContributorPayload(value: unknown): value is TopContributorPayload {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.feature === "string" &&
+    typeof value.group === "string" &&
+    Number.isFinite(value.share_pct) &&
+    Number.isFinite(value.delta)
+  );
+}
+
+function isScenarioPayload(value: unknown): value is ScenarioPayload {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.scenario === "string" &&
+    typeof value.label === "string" &&
+    Number.isFinite(value.probability) &&
+    Number.isFinite(value.percent) &&
+    Number.isFinite(value.delta_vs_baseline)
+  );
+}
+
 function isAnalysisResponsePayload(value: unknown): value is AnalysisResponsePayload {
   if (!isRecord(value)) {
     return false;
@@ -210,7 +265,38 @@ function isAnalysisResponsePayload(value: unknown): value is AnalysisResponsePay
     return false;
   }
 
-  return isRecord(value.input_profile);
+  if (!isRecord(value.input_profile)) {
+    return false;
+  }
+
+  if (
+    value.issue_contributor_groups !== undefined &&
+    (!isRecord(value.issue_contributor_groups) ||
+      !Object.values(value.issue_contributor_groups).every(
+        (entry) => Array.isArray(entry) && entry.every((item) => isContributorGroupPayload(item))
+      ))
+  ) {
+    return false;
+  }
+
+  if (
+    value.issue_top_contributors !== undefined &&
+    (!isRecord(value.issue_top_contributors) ||
+      !Object.values(value.issue_top_contributors).every(
+        (entry) => Array.isArray(entry) && entry.every((item) => isTopContributorPayload(item))
+      ))
+  ) {
+    return false;
+  }
+
+  if (
+    value.overall_scenarios !== undefined &&
+    (!Array.isArray(value.overall_scenarios) || !value.overall_scenarios.every((item) => isScenarioPayload(item)))
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 async function runInference(
