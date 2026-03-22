@@ -1,4 +1,4 @@
-# Dataquest 26 — Understanding Your Mind
+# Gamming and Mental Health - Dataquest 26
 
 A hackathon project that uses machine learning to analyze the relationship between gaming habits and mental wellbeing. Users fill out a short assessment about their gaming behavior and lifestyle; the system returns a personalized risk analysis across five wellbeing dimensions with explainable predictions.
 
