@@ -19,9 +19,7 @@ export default function Home() {
 
       {/* Asteroids */}
       <div className="asteroid asteroid-1"><AsteroidSVG /></div>
-      <div className="asteroid asteroid-2"><AsteroidSVG /></div>
       <div className="asteroid asteroid-3"><AsteroidSVG /></div>
-      <div className="asteroid asteroid-4"><AsteroidSVG /></div>
       <div className="asteroid asteroid-5"><AsteroidSVG /></div>
 
       {/* Content */}

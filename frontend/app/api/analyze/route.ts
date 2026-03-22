@@ -12,6 +12,7 @@ const NUMERIC_RANGES = {
   monthly_game_spending_usd: [0, 2000],
   exercise_hours_weekly: [0, 40],
   years_gaming: [0, 70],
+  sleep_hours: [0, 24],
 } as const;
 
 type NumericField = keyof typeof NUMERIC_RANGES;
@@ -23,6 +24,7 @@ interface AnalysisRequestPayload {
   monthly_game_spending_usd: number;
   exercise_hours_weekly: number;
   years_gaming: number;
+  sleep_hours: number;
   gender: string;
   game_genre: string;
   primary_game: string;
@@ -56,6 +58,17 @@ interface ScenarioPayload {
   delta_vs_baseline: number;
 }
 
+interface RecommendationPayload {
+  rank: number;
+  title: string;
+  action?: string;
+  detail: string;
+  impact_pct: number;
+  new_risk_pct: number;
+  type?: string;
+  scenario_key?: string;
+}
+
 interface AnalysisResponsePayload {
   model: string;
   feature_order: string[];
@@ -70,6 +83,7 @@ interface AnalysisResponsePayload {
   issue_contributor_groups?: Record<string, ContributorGroupPayload[]>;
   issue_top_contributors?: Record<string, TopContributorPayload[]>;
   overall_scenarios?: ScenarioPayload[];
+  recommendations?: RecommendationPayload[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -112,6 +126,7 @@ function validatePayload(payload: unknown): AnalysisRequestPayload {
     monthly_game_spending_usd: parseNumericField(payload, "monthly_game_spending_usd"),
     exercise_hours_weekly: parseNumericField(payload, "exercise_hours_weekly"),
     years_gaming: parseNumericField(payload, "years_gaming"),
+    sleep_hours: parseNumericField(payload, "sleep_hours"),
     gender: parseStringField(payload, "gender"),
     game_genre: parseStringField(payload, "game_genre"),
     primary_game: parseStringField(payload, "primary_game"),
@@ -232,6 +247,21 @@ function isScenarioPayload(value: unknown): value is ScenarioPayload {
   );
 }
 
+function isRecommendationPayload(value: unknown): value is RecommendationPayload {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value.title === "string" &&
+    typeof value.detail === "string" &&
+    Number.isFinite(value.rank) &&
+    Number.isFinite(value.impact_pct) &&
+    Number.isFinite(value.new_risk_pct) &&
+    (value.action === undefined || typeof value.action === "string") &&
+    (value.scenario_key === undefined || typeof value.scenario_key === "string")
+  );
+}
+
 function isAnalysisResponsePayload(value: unknown): value is AnalysisResponsePayload {
   if (!isRecord(value)) {
     return false;
@@ -292,6 +322,13 @@ function isAnalysisResponsePayload(value: unknown): value is AnalysisResponsePay
   if (
     value.overall_scenarios !== undefined &&
     (!Array.isArray(value.overall_scenarios) || !value.overall_scenarios.every((item) => isScenarioPayload(item)))
+  ) {
+    return false;
+  }
+
+  if (
+    value.recommendations !== undefined &&
+    (!Array.isArray(value.recommendations) || !value.recommendations.every((item) => isRecommendationPayload(item)))
   ) {
     return false;
   }

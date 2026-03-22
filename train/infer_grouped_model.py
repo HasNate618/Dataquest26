@@ -24,6 +24,7 @@ NUMERIC_RANGES = {
     "monthly_game_spending_usd": (0.0, 2000.0),
     "exercise_hours_weekly": (0.0, 40.0),
     "years_gaming": (0.0, 70.0),
+    "sleep_hours": (0.0, 24.0),
 }
 
 
@@ -123,6 +124,107 @@ def _local_feature_contrib(
     else:
         contrib_df["share_pct"] = 100.0 * contrib_df["abs_delta"] / total
     return contrib_df
+
+
+def _generate_recommendations(
+    scenarios: list[dict[str, Any]],
+    issues: list[dict[str, Any]],
+    overall_probability: float,
+) -> list[dict[str, Any]]:
+    """Generate actionable recommendations based on scenarios and issues."""
+    baseline_scenario = next((s for s in scenarios if s["scenario"] == "baseline"), None)
+    if not baseline_scenario:
+        return []
+
+    baseline_prob = baseline_scenario["probability"]
+    
+    # Get all scenarios except baseline, ranked by impact (most negative delta first)
+    ranked = sorted(
+        [s for s in scenarios if s["scenario"] != "baseline"],
+        key=lambda x: x["delta_vs_baseline"],
+    )
+    
+    recommendations = []
+    
+    # Map scenarios to clear, descriptive explanations
+    scenario_explanations = {
+        "exercise_+2h": {
+            "title": "Add 2 more hours of exercise per week",
+            "action": "Exercise +2 hours weekly",
+            "changes": "You exercise 2 extra hours each week",
+            "why": "Physical activity improves sleep quality and mental health, reducing wellbeing risks",
+        },
+        "gaming_hours_-2": {
+            "title": "Reduce daily gaming by 2 hours",
+            "action": "Gaming -2 hours daily",
+            "changes": "You game 2 hours less each day",
+            "why": "More time for sleep, exercise, and social connections",
+        },
+        "gaming_hours_-4": {
+            "title": "Reduce daily gaming by 4 hours",
+            "action": "Gaming -4 hours daily",
+            "changes": "You game 4 hours less each day",
+            "why": "Significant reduction in screen time and overall gaming commitment",
+        },
+        "spending_-30pct": {
+            "title": "Reduce game spending by 30%",
+            "action": "Spending -30%",
+            "changes": "You spend 30% less on in-game purchases",
+            "why": "Reduces gaming attachment and frees time for healthier activities",
+        },
+        "combined_healthy_shift": {
+            "title": "Combined lifestyle improvements",
+            "action": "Gaming -3h, Exercise +2h, Spending -20%",
+            "changes": "Reduce gaming by 3 hours, add 2 hours of exercise, cut spending by 20%",
+            "why": "Combines multiple interventions for maximum wellbeing improvement",
+        },
+    }
+    
+    for i, scenario in enumerate(ranked, 1):
+        impact_pct = abs(scenario["delta_vs_baseline"] * 100)
+        new_prob_pct = scenario["percent"]
+        
+        explanation = scenario_explanations.get(scenario["scenario"], None)
+        if not explanation:
+            continue
+        
+        # Build detail in structured format
+        detail = (
+            f"What changes: {explanation['changes']}\n"
+            f"Impact: Risk decreases from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% "
+            f"(saves {impact_pct:.1f} percentage points)\n"
+            f"Why it helps: {explanation['why']}"
+        )
+        
+        recommendations.append(
+            {
+                "rank": i,
+                "title": explanation["title"],
+                "action": explanation["action"],
+                "detail": detail,
+                "impact_pct": round(impact_pct, 1),
+                "new_risk_pct": round(new_prob_pct, 1),
+                "scenario_key": scenario["scenario"],
+            }
+        )
+    
+    # Add issue-specific warnings if any high-risk issues
+    high_risk_issues = [iss for iss in issues if iss["probability"] >= 0.5]
+    if high_risk_issues:
+        top_issue = high_risk_issues[0]
+        issue_name = top_issue["issue"].replace("_", " ").title()
+        recommendations.append(
+            {
+                "rank": len(recommendations) + 1,
+                "type": "warning",
+                "title": f"High {issue_name} Risk Alert",
+                "detail": f"Your {issue_name.lower()} risk is {top_issue['percent']:.1f}%. This is above 50% (high threshold). Prioritize the recommendations above to reduce this risk.",
+                "impact_pct": 0,
+                "new_risk_pct": top_issue["percent"],
+            }
+        )
+    
+    return recommendations
 
 
 def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any]:
@@ -241,6 +343,9 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
 
     scenario_ranked = sorted(scenarios, key=lambda x: x["probability"])
 
+    # Generate recommendations
+    recommendations = _generate_recommendations(scenario_ranked, issues_sorted, overall_probability)
+
     return {
         "model": type(overall_model.named_steps["model"]).__name__,
         "feature_order": feature_order,
@@ -255,6 +360,7 @@ def run_inference(artifact_path: Path, payload: dict[str, Any]) -> dict[str, Any
         "issue_contributor_groups": contributor_groups_by_issue,
         "issue_top_contributors": top_contributors_by_issue,
         "overall_scenarios": scenario_ranked,
+        "recommendations": recommendations,
     }
 
 
