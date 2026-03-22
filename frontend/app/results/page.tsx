@@ -165,7 +165,7 @@ function IssueContributorPie({
   }));
 
   return (
-    <div className="border border-gray-800 p-4 md:p-5">
+    <div className="border border-gray-700 p-4 md:p-5 bg-black/40">
       <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-5">{toTitle(issueName)}</p>
       <div style={{ width: "100%", height: 220 }} className="md:h-[240px]">
         <ResponsiveContainer>
@@ -225,20 +225,20 @@ export default function ResultsPage() {
     }));
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen flex flex-col items-center">
       {/* Background layers */}
       <div className="stars-layer stars-small" />
       <div className="stars-layer stars-medium" />
       <div className="scanlines" />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 md:py-20">
+      <div className="relative z-10 w-full max-w-4xl px-4 md:px-6 py-12 md:py-20 flex flex-col items-center">
         {/* Back link */}
         <Link href="/" className="font-pixel text-gray-500 hover:text-white transition-colors fixed top-6 left-6 z-50" style={{ fontSize: "0.85rem" }}>
           ← BACK TO BASE
         </Link>
 
         {/* Header */}
-        <div className="mb-12 md:mb-16 text-center pt-8">
+        <div className="mb-12 md:mb-16 text-center pt-8 w-full">
           <p className="font-mono text-gray-600 text-xs tracking-widest mb-4 md:mb-6">MISSION COMPLETE — MODEL INFERENCE REPORT</p>
           <h1 className="font-pixel text-white mb-4 md:mb-6" style={{ fontSize: "clamp(1.5rem, 4vw, 2.5rem)", lineHeight: "1.4" }}>
             YOUR RESULTS
@@ -247,7 +247,7 @@ export default function ResultsPage() {
         </div>
 
         {/* Summary Card */}
-        <div className="card-pixel mb-10 md:mb-14">
+        <div className="card-pixel mb-10 md:mb-14 w-full">
           <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">MODEL SUMMARY</p>
           <div className="space-y-4 md:space-y-5">
             <p className="font-mono text-sm text-gray-300">Primary model: <span className="text-white">{result.model}</span></p>
@@ -264,7 +264,7 @@ export default function ResultsPage() {
         </div>
 
         {/* Issue Breakdown */}
-        <div className="card-pixel mb-10 md:mb-14">
+        <div className="card-pixel mb-10 md:mb-14 w-full">
           <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">ISSUE RISK BREAKDOWN</p>
           <div className="space-y-2">
             {result.issues.map((issue) => (
@@ -275,7 +275,7 @@ export default function ResultsPage() {
 
         {/* Intervention Scenarios */}
         {scenarioDataForChart.length > 0 ? (
-          <div className="card-pixel mb-10 md:mb-14">
+          <div className="card-pixel mb-10 md:mb-14 w-full">
             <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">INTERVENTION SCENARIO IMPACT (VS BASELINE)</p>
             <div style={{ width: "100%", height: 340 }} className="mb-6">
               <ResponsiveContainer>
@@ -311,7 +311,7 @@ export default function ResultsPage() {
 
         {/* Contributor Pie Charts */}
         {issueContributorEntries.length > 0 ? (
-          <div className="card-pixel mb-10 md:mb-14">
+          <div className="card-pixel mb-10 md:mb-14 w-full">
             <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">CAUSE GROUP CONTRIBUTOR PIE CHARTS</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
               {issueContributorEntries.map(([issueName, contributorData]) => (
@@ -323,11 +323,11 @@ export default function ResultsPage() {
 
         {/* Top Contributors */}
         {result.issue_top_contributors ? (
-          <div className="card-pixel mb-10 md:mb-14">
+          <div className="card-pixel mb-10 md:mb-14 w-full">
             <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">TOP PERSONALIZED CONTRIBUTORS</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
               {Object.entries(result.issue_top_contributors).map(([issueName, contributors]) => (
-                <div key={issueName} className="border border-gray-800 p-5">
+                <div key={issueName} className="border border-gray-700 p-5 bg-black/40">
                   <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-4">{toTitle(issueName)}</p>
                   <div className="space-y-3">
                     {contributors.slice(0, 3).map((contributor) => (
@@ -344,17 +344,17 @@ export default function ResultsPage() {
         ) : null}
 
         {/* Input Profile */}
-        <div className="card-pixel mb-10 md:mb-14">
+        <div className="card-pixel mb-10 md:mb-14 w-full">
           <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">MODEL INPUT PROFILE</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
             {result.feature_order.map((fieldName) => (
-              <div key={fieldName} className="border border-gray-800 p-4">
+              <div key={fieldName} className="border border-gray-700 p-4 bg-black/40">
                 <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-2">{toTitle(fieldName)}</p>
                 <p className="font-mono text-sm text-gray-200">{String(result.input_profile[fieldName] ?? "")}</p>
               </div>
             ))}
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="border-t border-gray-700 mt-8 pt-8">
             <p className="font-mono text-xs text-gray-600 leading-relaxed">
               Results are generated from the trained grouped wellbeing model and are intended for educational insights, not clinical diagnosis.
             </p>
@@ -362,7 +362,7 @@ export default function ResultsPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4 md:gap-6 flex-wrap justify-center pb-8">
+        <div className="flex gap-4 md:gap-6 flex-wrap justify-center pb-8 w-full">
           <Link href="/assess">
             <button className="btn-pixel" style={{ fontSize: "0.85rem", padding: "1.2rem 2.5rem" }}>← REPLAY MISSION</button>
           </Link>
