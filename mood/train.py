@@ -5,6 +5,7 @@ from pathlib import Path
 import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
@@ -16,12 +17,20 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
+from sklearn.preprocessing import (
+    LabelEncoder,
+    OneHotEncoder,
+    OrdinalEncoder,
+    StandardScaler,
+)
+from xgboost import XGBClassifier
 
 DATA_PATH = Path("data/Gaming and Mental Health.csv")
 TARGET = "mood_group"
 OUTPUT_PATH = Path("model.joblib")
 OUTPUT_PATH_PKL = Path("model.pkl")
+XGB_OUTPUT_PATH = Path("model_xgb.joblib")
+XGB_OUTPUT_PATH_PKL = Path("model_xgb.pkl")
 PLOTS_DIR = Path("plots")
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
@@ -80,6 +89,12 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
             "primary_game",
             "gaming_addiction_risk_level",
             "gender",
+            "gaming_platform",
+            "eye_strain",
+            "back_neck_pain",
+            "mood_swing_frequency",
+            "monthly_game_spending_usd",
+            "social_isolation_score",
         ]
         if col in cleaned.columns
     ]
@@ -155,6 +170,17 @@ def evaluate(
         "macro_f1": f1_score(y_test, preds, average="macro"),
         "confusion_matrix": confusion_matrix(y_test, preds).tolist(),
         "classification_report": classification_report(y_test, preds, output_dict=True),
+    }
+    return metrics
+
+
+def evaluate_preds(name: str, y_true: pd.Series, preds) -> dict:
+    metrics = {
+        "model": name,
+        "accuracy": accuracy_score(y_true, preds),
+        "macro_f1": f1_score(y_true, preds, average="macro"),
+        "confusion_matrix": confusion_matrix(y_true, preds).tolist(),
+        "classification_report": classification_report(y_true, preds, output_dict=True),
     }
     return metrics
 
@@ -248,22 +274,47 @@ def main() -> None:
     preprocessor = build_preprocessor(
         numerical_features, nominal_features, ordinal_features
     )
-    clf = RandomForestClassifier(
-        n_estimators=300, random_state=RANDOM_STATE, n_jobs=-1, class_weight="balanced"
+    rf_clf = RandomForestClassifier(
+        n_estimators=500, random_state=RANDOM_STATE, n_jobs=-1, class_weight="balanced"
     )
-    pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", clf)])
-    pipeline.fit(X_train, y_train)
+    rf_pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", rf_clf)])
+    rf_pipeline.fit(X_train, y_train)
 
-    metrics = evaluate("random forest classifier", pipeline, X_test, y_test)
-    save_plots(pipeline, X_test, y_test, keep_open=True)
+    xgb_clf = XGBClassifier(
+        n_estimators=500,
+        max_depth=6,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        # objective="multi:softprob",
+        # eval_metric="mlogloss",
+        random_state=RANDOM_STATE,
+    )
+    xgb_pipeline = Pipeline(
+        steps=[("preprocessor", clone(preprocessor)), ("model", xgb_clf)]
+    )
+    label_encoder = LabelEncoder()
+    y_train_encoded = label_encoder.fit_transform(y_train)
+    xgb_pipeline.fit(X_train, y_train_encoded)
+    xgb_preds_encoded = xgb_pipeline.predict(X_test)
+    xgb_preds = label_encoder.inverse_transform(xgb_preds_encoded.astype(int))
 
-    joblib.dump(pipeline, OUTPUT_PATH)
+    rf_metrics = evaluate("random forest classifier", rf_pipeline, X_test, y_test)
+    xgb_metrics = evaluate_preds("xgboost classifier", y_test, xgb_preds)
+    save_plots(rf_pipeline, X_test, y_test, keep_open=True)
+
+    joblib.dump(rf_pipeline, OUTPUT_PATH)
     with OUTPUT_PATH_PKL.open("wb") as f:
-        pickle.dump(pipeline, f)
+        pickle.dump(rf_pipeline, f)
+    joblib.dump(xgb_pipeline, XGB_OUTPUT_PATH)
+    with XGB_OUTPUT_PATH_PKL.open("wb") as f:
+        pickle.dump(xgb_pipeline, f)
 
-    print(json.dumps({"ensemble": metrics}, indent=2))
+    print(json.dumps({"random_forest": rf_metrics, "xgboost": xgb_metrics}, indent=2))
     print(f"Saved model: {OUTPUT_PATH.resolve()}")
     print(f"Saved model: {OUTPUT_PATH_PKL.resolve()}")
+    print(f"Saved model: {XGB_OUTPUT_PATH.resolve()}")
+    print(f"Saved model: {XGB_OUTPUT_PATH_PKL.resolve()}")
     print(f"Saved plots: {(PLOTS_DIR / 'mood_state_distribution.png').resolve()}")
     print(f"Saved plots: {(PLOTS_DIR / 'confusion_matrix.png').resolve()}")
     print(f"Saved plots: {(PLOTS_DIR / 'feature_importance_top20.png').resolve()}")
