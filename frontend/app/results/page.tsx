@@ -62,6 +62,12 @@ interface AnalysisResult {
 interface StoredAnalysis {
   generatedAt: string;
   result: AnalysisResult;
+  grouping?: {
+    cluster: number;
+    group_name: string;
+    available_groups: Array<{ cluster: number; group_name: string }>;
+    n_features: number;
+  };
 }
 
 function toTitle(value: string): string {
@@ -262,6 +268,8 @@ export default function ResultsPage() {
   }
 
   const { result } = stored;
+  const personaName = stored.grouping?.group_name ?? null;
+  const personaCluster = stored.grouping?.cluster ?? null;
   const topIssueLabel = result.top_issue ? toTitle(result.top_issue.issue) : "None";
   const generatedAt = new Date(stored.generatedAt).toLocaleString();
   const issueContributorEntries = Object.entries(result.issue_contributor_groups ?? {});
@@ -305,6 +313,24 @@ export default function ResultsPage() {
           <p className="font-mono text-xs text-gray-500">Generated at {generatedAt}</p>
         </div>
 
+        <div className="card-pixel mb-8">
+          <p className="font-mono text-xs text-gray-500 tracking-widest mb-4">MODEL SUMMARY</p>
+          <p className="font-mono text-sm text-gray-300 mb-3">Primary model: <span className="text-white">{result.model}</span></p>
+          {personaName ? (
+            <p className="font-mono text-sm text-gray-300 mb-3">
+              Persona group: <span className="text-white">{personaName}</span>
+              {personaCluster !== null ? <span className="text-gray-500"> (Cluster {personaCluster})</span> : null}
+            </p>
+          ) : null}
+          <p className="font-mono text-sm text-gray-300 mb-3">
+            Overall wellbeing risk:{" "}
+            <span style={{ color: levelColor(result.overall.label) }} className="font-semibold">
+              {result.overall.label.toUpperCase()} ({result.overall.percent.toFixed(1)}%)
+            </span>
+          </p>
+          <p className="font-mono text-sm text-gray-300">
+            Highest issue risk: <span className="text-white">{topIssueLabel}</span>
+          </p>
         {/* Summary Card */}
         <div className="card-pixel mb-14 md:mb-16 w-full">
           <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>MODEL SUMMARY</p>
