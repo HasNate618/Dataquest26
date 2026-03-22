@@ -1,125 +1,228 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
 
-// Placeholder archetypes — swap with real clustering output
-const ARCHETYPES: Record<string, { title: string; description: string }> = {
-  "0": {
-    title: "THE COMPETITIVE WARRIOR",
-    description: "High-intensity, rank-driven player. You live for the grind, thrive under pressure, and measure success in LP and MMR. Social but combative.",
-  },
-  "1": {
-    title: "THE CASUAL EXPLORER",
-    description: "Gaming is your escape, not your obsession. You prefer rich worlds and good stories over leaderboards. Balanced lifestyle, moderate hours.",
-  },
-  "2": {
-    title: "THE SOCIAL CONNECTOR",
-    description: "Multiplayer is your element. You game to bond, not to win. High social score, low toxicity. Gaming is just the backdrop.",
-  },
-  "3": {
-    title: "THE LONE WANDERER",
-    description: "Solo player, deep focus. Long sessions, single-player worlds. Introverted gamer archetype — intense but self-contained.",
-  },
-  "4": {
-    title: "THE CONTENT CREATOR",
-    description: "You stream, clip, and share. Gaming is both hobby and platform. High engagement, high spend, high visibility.",
-  },
-};
-
-interface MentalHealthScores {
-  anxiety: number;
-  depression: number;
-  addiction: number;
-  happiness: number;
-}
-
-// Mock scoring based on form data — replace with real API response
-function mockPredict(form: Record<string, string>): { cluster: string; scores: MentalHealthScores } {
-  const hours = parseFloat(form.daily_hours || "3");
-  const sleep = parseFloat(form.sleep_hours || "7");
-  const exercise = parseFloat(form.exercise_days || "3");
-  const social = parseFloat(form.social_score || "5");
-  const toxic = parseFloat(form.toxic_exposure || "5");
-  const multiplayer = parseFloat(form.multiplayer_ratio || "0.5");
-  const streaming = form.streaming === "yes";
-
-  // Very rough heuristics for demo
-  const anxiety = Math.min(100, Math.round((hours * 6) + (toxic * 4) + Math.max(0, (8 - sleep) * 5)));
-  const depression = Math.min(100, Math.round(Math.max(0, (6 - sleep) * 8) + Math.max(0, (5 - social) * 5) + hours * 3));
-  const addiction = Math.min(100, Math.round(hours * 9 + parseFloat(form.spending_monthly || "0") * 0.2));
-  const happiness = Math.min(100, Math.max(0, Math.round(social * 7 + exercise * 5 + sleep * 4 - hours * 2)));
-
-  // Cluster heuristic
-  let cluster = "1";
-  if (hours > 6 && form.competitive_rank && !["Unranked", "Bronze"].includes(form.competitive_rank)) cluster = "0";
-  else if (multiplayer > 0.7 && social > 6) cluster = "2";
-  else if (multiplayer < 0.3 && social < 4) cluster = "3";
-  else if (streaming) cluster = "4";
-
-  return { cluster, scores: { anxiety, depression, addiction, happiness } };
-}
-
-interface MeterProps {
+interface AnalysisIssue {
+  issue: string;
+  probability: number;
+  percent: number;
   label: string;
-  value: number;
-  color?: string;
 }
 
-function Meter({ label, value, color = "#fff" }: MeterProps) {
-  const [width, setWidth] = useState(0);
+interface ContributorGroup {
+  group: string;
+  share_pct: number;
+}
 
-  useEffect(() => {
-    const t = setTimeout(() => setWidth(value), 100);
-    return () => clearTimeout(t);
-  }, [value]);
+interface TopContributor {
+  feature: string;
+  group: string;
+  share_pct: number;
+  delta: number;
+}
 
-  const level = value < 30 ? "LOW" : value < 60 ? "MODERATE" : value < 80 ? "HIGH" : "CRITICAL";
+interface ScenarioResult {
+  scenario: string;
+  probability: number;
+  percent: number;
+  label: string;
+  delta_vs_baseline: number;
+}
+
+interface AnalysisResult {
+  model: string;
+  feature_order: string[];
+  overall: {
+    probability: number;
+    percent: number;
+    label: string;
+  };
+  issues: AnalysisIssue[];
+  top_issue: AnalysisIssue | null;
+  input_profile: Record<string, string | number>;
+  issue_contributor_groups?: Record<string, ContributorGroup[]>;
+  issue_top_contributors?: Record<string, TopContributor[]>;
+  overall_scenarios?: ScenarioResult[];
+}
+
+interface StoredAnalysis {
+  generatedAt: string;
+  result: AnalysisResult;
+}
+
+function toTitle(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function levelColor(label: string): string {
+  if (label === "High") return "#ff6464";
+  if (label === "Moderate") return "#ffd166";
+  if (label === "Mild") return "#8ecae6";
+  return "#9be564";
+}
+
+function formatTooltipValue(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${value.toFixed(1)}%`;
+  }
+  if (typeof value === "string" && value.length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return `${parsed.toFixed(1)}%`;
+    }
+  }
+  return "0.0%";
+}
+
+function groupColor(group: string): string {
+  const palette: Record<string, string> = {
+    gaming_load: "#ff6464",
+    gaming_spend: "#ffd166",
+    health_habits: "#9be564",
+    game_context: "#8ecae6",
+    context: "#bdb2ff",
+    other: "#94a3b8",
+  };
+  return palette[group] ?? "#a8dadc";
+}
+
+function scenarioLabel(value: string): string {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function Meter({ issue }: { issue: AnalysisIssue }) {
+  const barColor = levelColor(issue.label);
 
   return (
     <div className="mb-5">
       <div className="flex justify-between font-mono text-xs text-gray-400 mb-2">
-        <span className="tracking-widest">{label}</span>
-        <span style={{ color, fontSize: "0.6rem" }} className="font-pixel">
-          {level} ({value})
+        <span className="tracking-widest">{toTitle(issue.issue)}</span>
+        <span style={{ color: barColor, fontSize: "0.6rem" }} className="font-pixel">
+          {issue.label.toUpperCase()} ({issue.percent.toFixed(1)}%)
         </span>
       </div>
       <div className="meter-track">
         <div
           className="meter-fill"
-          style={{ width: `${width}%`, background: color, transition: "width 0.9s ease" }}
+          style={{
+            width: `${issue.percent}%`,
+            background: barColor,
+            transition: "width 0.9s ease",
+          }}
         />
       </div>
     </div>
   );
 }
 
-export default function ResultsPage() {
-  const [result, setResult] = useState<{ cluster: string; scores: MentalHealthScores } | null>(null);
+function readStoredAnalysis(): StoredAnalysis | null {
+  if (
+    typeof window === "undefined" ||
+    typeof window.localStorage === "undefined" ||
+    typeof window.localStorage.getItem !== "function"
+  ) {
+    return null;
+  }
 
-  useEffect(() => {
-    const raw = localStorage.getItem("dq_form");
-    if (raw) {
-      const form = JSON.parse(raw);
-      setResult(mockPredict(form));
-    } else {
-      // Demo fallback
-      setResult({
-        cluster: "0",
-        scores: { anxiety: 72, depression: 45, addiction: 68, happiness: 55 },
-      });
+  const raw = window.localStorage.getItem("dq_analysis");
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "generatedAt" in parsed &&
+      "result" in parsed &&
+      typeof (parsed as { generatedAt: unknown }).generatedAt === "string"
+    ) {
+      return parsed as StoredAnalysis;
     }
-  }, []);
+  } catch {
+    return null;
+  }
 
-  if (!result) {
+  return null;
+}
+
+function IssueContributorPie({
+  issueName,
+  data,
+}: {
+  issueName: string;
+  data: ContributorGroup[];
+}) {
+  const chartData = data.map((item) => ({
+    name: toTitle(item.group),
+    value: Number(item.share_pct.toFixed(2)),
+    fill: groupColor(item.group),
+  }));
+
+  return (
+    <div className="border border-gray-800 p-4">
+      <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-4">{toTitle(issueName)}</p>
+      <div style={{ width: "100%", height: 220 }}>
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie data={chartData} dataKey="value" nameKey="name" innerRadius={40} outerRadius={78} label>
+              {chartData.map((entry) => (
+                <Cell key={`${issueName}-${entry.name}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value, name) => [formatTooltipValue(value), String(name)]}
+              contentStyle={{
+                background: "#050505",
+                border: "1px solid #444",
+                color: "#f1f5f9",
+                fontSize: "11px",
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export default function ResultsPage() {
+  const stored = useMemo(() => readStoredAnalysis(), []);
+
+  if (!stored) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="font-mono text-gray-400 text-sm">LOADING RESULTS...</p>
+      <div className="relative min-h-screen flex items-center justify-center">
+        <div className="stars-layer stars-small" style={{ opacity: 0.3 }} />
+        <div className="stars-layer stars-medium" style={{ opacity: 0.3 }} />
+        <div className="scanlines" />
+        <div className="relative z-10 max-w-xl mx-auto px-6 text-center">
+          <p className="font-mono text-gray-400 text-sm mb-6">
+            NO ANALYSIS DATA FOUND. COMPLETE THE PROFILE TO GENERATE RESULTS.
+          </p>
+          <Link href="/assess">
+            <button className="btn-pixel px-8 py-4">GO TO CHARACTER PROFILE</button>
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const archetype = ARCHETYPES[result.cluster] ?? ARCHETYPES["1"];
+  const { result } = stored;
+  const topIssueLabel = result.top_issue ? toTitle(result.top_issue.issue) : "None";
+  const generatedAt = new Date(stored.generatedAt).toLocaleString();
+  const issueContributorEntries = Object.entries(result.issue_contributor_groups ?? {});
+  const scenarioData = result.overall_scenarios ?? [];
+  const scenarioDataForChart = scenarioData
+    .filter((row) => row.scenario !== "baseline")
+    .map((row) => ({
+      scenario: scenarioLabel(row.scenario),
+      delta: Number((row.delta_vs_baseline * 100).toFixed(2)),
+    }));
 
   return (
     <div className="relative min-h-screen">
@@ -127,53 +230,123 @@ export default function ResultsPage() {
       <div className="stars-layer stars-medium" style={{ opacity: 0.3 }} />
       <div className="scanlines" />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-6 py-16">
-        {/* Header */}
-        <div className="mb-12">
-          <p className="font-mono text-gray-600 text-xs tracking-widest mb-8">MISSION COMPLETE — ANALYSIS REPORT</p>
+      <div className="relative z-10 max-w-3xl mx-auto px-6 py-16">
+        <div className="mb-10">
+          <p className="font-mono text-gray-600 text-xs tracking-widest mb-8">MISSION COMPLETE — MODEL INFERENCE REPORT</p>
           <h1 className="font-pixel text-white" style={{ fontSize: "0.85rem", lineHeight: "2.2" }}>
             YOUR RESULTS
           </h1>
+          <p className="font-mono text-xs text-gray-500 mt-4">Generated at {generatedAt}</p>
         </div>
 
-        {/* Cluster Card */}
         <div className="card-pixel mb-8">
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-4">// MODEL 1: CLUSTER ANALYSIS</p>
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-3">YOU ARE —</p>
-          <h2 className="font-pixel text-white mb-6" style={{ fontSize: "0.75rem", lineHeight: "2" }}>
-            {archetype.title}
-          </h2>
-          <p className="font-mono text-gray-300 text-sm leading-7">
-            {archetype.description}
+          <p className="font-mono text-xs text-gray-500 tracking-widest mb-4">MODEL SUMMARY</p>
+          <p className="font-mono text-sm text-gray-300 mb-3">Primary model: <span className="text-white">{result.model}</span></p>
+          <p className="font-mono text-sm text-gray-300 mb-3">
+            Overall wellbeing risk:{" "}
+            <span style={{ color: levelColor(result.overall.label) }} className="font-semibold">
+              {result.overall.label.toUpperCase()} ({result.overall.percent.toFixed(1)}%)
+            </span>
           </p>
-          <p className="font-mono text-xs text-gray-600 mt-4 tracking-widest">
-            CLUSTER ID: {result.cluster}
+          <p className="font-mono text-sm text-gray-300">
+            Highest issue risk: <span className="text-white">{topIssueLabel}</span>
           </p>
         </div>
 
-        {/* Mental Health Card */}
+        <div className="card-pixel mb-8">
+          <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">ISSUE RISK BREAKDOWN</p>
+          {result.issues.map((issue) => (
+            <Meter key={issue.issue} issue={issue} />
+          ))}
+        </div>
+
+        {scenarioDataForChart.length > 0 ? (
+          <div className="card-pixel mb-8">
+            <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">INTERVENTION SCENARIO IMPACT (VS BASELINE)</p>
+            <div style={{ width: "100%", height: 320 }}>
+              <ResponsiveContainer>
+                <BarChart data={scenarioDataForChart}>
+                  <XAxis dataKey="scenario" tick={{ fill: "#9ca3af", fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={80} />
+                  <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} unit="pp" />
+                  <Tooltip
+                    formatter={(value) => {
+                      const numeric = typeof value === "number" ? value : Number(value);
+                      const formatted = Number.isFinite(numeric) ? `${numeric.toFixed(2)} pp` : "0.00 pp";
+                      return [formatted, "Delta vs baseline"];
+                    }}
+                    contentStyle={{
+                      background: "#050505",
+                      border: "1px solid #444",
+                      color: "#f1f5f9",
+                      fontSize: "11px",
+                    }}
+                  />
+                  <Bar dataKey="delta">
+                    {scenarioDataForChart.map((entry) => (
+                      <Cell key={entry.scenario} fill={entry.delta <= 0 ? "#22c55e" : "#ff6464"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="font-mono text-xs text-gray-600 mt-4">
+              Negative values indicate lower overall risk than baseline.
+            </p>
+          </div>
+        ) : null}
+
+        {issueContributorEntries.length > 0 ? (
+          <div className="card-pixel mb-8">
+            <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">CAUSE GROUP CONTRIBUTOR PIE CHARTS</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {issueContributorEntries.map(([issueName, contributorData]) => (
+                <IssueContributorPie key={issueName} issueName={issueName} data={contributorData} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {result.issue_top_contributors ? (
+          <div className="card-pixel mb-8">
+            <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">TOP PERSONALIZED CONTRIBUTORS</p>
+            <div className="space-y-6">
+              {Object.entries(result.issue_top_contributors).map(([issueName, contributors]) => (
+                <div key={issueName} className="border border-gray-800 p-4">
+                  <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-3">{toTitle(issueName)}</p>
+                  <div className="space-y-2">
+                    {contributors.slice(0, 3).map((contributor) => (
+                      <div key={`${issueName}-${contributor.feature}`} className="flex justify-between gap-4 text-xs font-mono">
+                        <span className="text-gray-200">{toTitle(contributor.feature)} ({toTitle(contributor.group)})</span>
+                        <span className="text-gray-400">{contributor.share_pct.toFixed(1)}% share</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="card-pixel mb-10">
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">// MODEL 2: MENTAL HEALTH PREDICTION</p>
-
-          <Meter label="ANXIETY SCORE" value={result.scores.anxiety} />
-          <Meter label="DEPRESSION RISK" value={result.scores.depression} />
-          <Meter label="ADDICTION RISK" value={result.scores.addiction} />
-          <Meter label="HAPPINESS INDEX" value={result.scores.happiness} color="#aaa" />
-
+          <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">MODEL INPUT PROFILE</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {result.feature_order.map((fieldName) => (
+              <div key={fieldName} className="border border-gray-800 p-3">
+                <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-1">{toTitle(fieldName)}</p>
+                <p className="font-mono text-sm text-gray-200">{String(result.input_profile[fieldName] ?? "")}</p>
+              </div>
+            ))}
+          </div>
           <div className="border-t border-gray-800 mt-6 pt-6">
             <p className="font-mono text-xs text-gray-600 leading-6">
-              * Results are generated by machine learning models trained on gaming and lifestyle data.
-              This is not a clinical diagnosis.
+              Results are generated from the trained grouped wellbeing model and are intended for educational insights, not clinical diagnosis.
             </p>
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-4 flex-wrap">
           <Link href="/assess">
-            <button className="btn-pixel px-8 py-4">
-              ← REPLAY MISSION
-            </button>
+            <button className="btn-pixel px-8 py-4">← REPLAY MISSION</button>
           </Link>
           <Link href="/">
             <button
