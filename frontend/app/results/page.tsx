@@ -103,6 +103,19 @@ function groupColor(group: string): string {
   return palette[group] ?? "#60a5fa";
 }
 
+function groupLabel(group: string): string {
+  const labels: Record<string, string> = {
+    gaming_load: "Gaming Intensity",
+    gaming_spend: "In-Game Spending",
+    health_habits: "Health & Exercise",
+    game_context: "Game Choice & Platform",
+    context: "Personal Background",
+    sleep_process: "Sleep Quality",
+    other: "Other",
+  };
+  return labels[group] ?? group;
+}
+
 function scenarioLabel(value: string): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -171,11 +184,14 @@ function IssueContributorPie({
   issueName: string;
   data: ContributorGroup[];
 }) {
-  const chartData = data.map((item) => ({
-    name: toTitle(item.group),
-    value: Number(item.share_pct.toFixed(2)),
-    fill: groupColor(item.group),
-  }));
+  // Filter out groups with 0% share and map to descriptive names
+  const chartData = data
+    .filter((item) => item.share_pct > 0)
+    .map((item) => ({
+      name: groupLabel(item.group),
+      value: Number(item.share_pct.toFixed(2)),
+      fill: groupColor(item.group),
+    }));
 
   return (
     <div className="border-2 border-gray-700 p-5 md:p-6 bg-black/40">
