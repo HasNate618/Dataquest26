@@ -68,21 +68,62 @@ function generateChar(id: number): CharProps {
 
 export default function SingleCharFloat() {
   const [char, setChar] = useState<CharProps | null>(null);
+  const [enabled, setEnabled] = useState(false);
   const idRef = useRef(0);
+  const timeoutRef = useRef<number | null>(null);
 
   const spawnNext = useCallback((delayMs?: number) => {
+    if (!enabled) {
+      return;
+    }
     const delay = delayMs ?? randomBetween(55000, 70000);
-    setTimeout(() => {
+    timeoutRef.current = window.setTimeout(() => {
       idRef.current += 1;
       setChar(generateChar(idRef.current));
     }, delay);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function computeEnabledState() {
+      const mode = window.localStorage.getItem("dq_perf_mode");
+      const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const shouldEnable = mode === "full" && !prefersReduced;
+      setEnabled(shouldEnable);
+      if (!shouldEnable) {
+        setChar(null);
+        if (timeoutRef.current !== null) {
+          window.clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+      }
+    }
+
+    computeEnabledState();
+    window.addEventListener("dq-perf-mode-change", computeEnabledState);
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    mediaQuery.addEventListener("change", computeEnabledState);
+
+    return () => {
+      window.removeEventListener("dq-perf-mode-change", computeEnabledState);
+      mediaQuery.removeEventListener("change", computeEnabledState);
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
     spawnNext(randomBetween(55000, 70000));
-  }, [spawnNext]);
+  }, [enabled, spawnNext]);
 
-  if (!char) return null;
+  if (!enabled || !char) return null;
 
   const endAngle = char.startAngle + char.spinDelta;
   const midAngle = char.startAngle + char.spinDelta * 0.5;
