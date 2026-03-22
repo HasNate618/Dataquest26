@@ -17,7 +17,7 @@ from typing import Any
 import numpy as np
 
 
-DEFAULT_MODEL_PATH = Path("model/k_cluster.pkl")
+DEFAULT_MODEL_PATH = Path("train/artifacts/gamer_personas_kmeans.pkl")
 
 RAW_NUMERIC_FIELDS = {
     "age": (10.0, 80.0),
@@ -158,14 +158,75 @@ def predict_cluster(model_path: Path, raw_payload: dict[str, Any]) -> dict[str, 
         raise FileNotFoundError(f"Model file not found: {model_path}")
 
     with model_path.open("rb") as f:
-        model = pickle.load(f)
+        bundle = pickle.load(f)
+    
+    # Extract components from bundle
+    if isinstance(bundle, dict):
+        # New bundle format (dictionary with models + metadata)
+        kmeans = bundle.get('kmeans')
+        pca = bundle.get('pca')
+        scaler = bundle.get('scaler')
+        vfilter = bundle.get('vfilter')
+        imputer = bundle.get('imputer')
+        encoder = bundle.get('encoder')
+        numeric_cols = bundle.get('numeric_cols', [])
+        ordinal_cols = bundle.get('ordinal_cols', {})
+        boolean_cols = bundle.get('boolean_cols', [])
+        nominal_cols = bundle.get('nominal_cols', [])
+        
+        if not all([kmeans, pca, scaler, vfilter]):
+            raise ValueError("Model bundle missing required components")
+        use_preprocessing = True
+    else:
+        # Old format (direct KMeans model)
+        kmeans = bundle
+        use_preprocessing = False
 
     validated_payload = _validate_raw_payload(raw_payload)
-
-    expected = int(getattr(model, "n_features_in_", 14) or 14)
-    X = _encode_feature_vector(validated_payload, expected)
-
-    pred = model.predict(X)
+    expected = int(getattr(kmeans, "n_clusters", 8) or 8)
+    
+    # Use full preprocessing pipeline with the model's preprocessors
+    if use_preprocessing:
+        import pandas as pd
+        
+        # Create DataFrame with all expected columns, filling missing with defaults
+        data = {}
+        for col in numeric_cols:
+            data[col] = validated_payload.get(col, 0.0)
+        for col in ordinal_cols.keys():
+            data[col] = validated_payload.get(col, ordinal_cols[col][0])  # use first category
+        for col in boolean_cols:
+            data[col] = validated_payload.get(col, False)
+        for col in nominal_cols:
+            data[col] = validated_payload.get(col, 'FPS')  # default game genre
+        
+        X = pd.DataFrame([data])
+        
+        # Apply imputation to numeric columns
+        X[numeric_cols] = imputer.transform(X[numeric_cols])
+        
+        # Apply ordinal encoding to ordinal columns
+        for col, categories in ordinal_cols.items():
+            X[col] = pd.Categorical(X[col], categories=categories).codes
+        
+        # Convert boolean columns
+        X[boolean_cols] = X[boolean_cols].astype(int)
+        
+        # Apply one-hot encoding to nominal columns
+        X_ohe = encoder.transform(X[nominal_cols])
+        ohe_cols = encoder.get_feature_names_out(nominal_cols)
+        X = pd.concat([X.drop(columns=nominal_cols), pd.DataFrame(X_ohe, columns=ohe_cols)], axis=1)
+        
+        # Apply variance filter, scaler, PCA
+        X_filtered = vfilter.transform(X)
+        X_scaled = scaler.transform(X_filtered)
+        X_pca = pca.transform(X_scaled)
+        pred = kmeans.predict(X_pca)
+    else:
+        # Fallback to old simple encoding
+        X = _encode_feature_vector(validated_payload, expected)
+        pred = kmeans.predict(X)
+    
     if len(pred) != 1:
         raise RuntimeError("Unexpected prediction shape from model.")
 
