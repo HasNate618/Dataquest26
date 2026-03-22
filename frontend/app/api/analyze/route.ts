@@ -61,10 +61,12 @@ interface ScenarioPayload {
 interface RecommendationPayload {
   rank: number;
   title: string;
+  action?: string;
   detail: string;
   impact_pct: number;
   new_risk_pct: number;
   type?: string;
+  scenario_key?: string;
 }
 
 interface AnalysisResponsePayload {
@@ -254,7 +256,9 @@ function isRecommendationPayload(value: unknown): value is RecommendationPayload
     typeof value.detail === "string" &&
     Number.isFinite(value.rank) &&
     Number.isFinite(value.impact_pct) &&
-    Number.isFinite(value.new_risk_pct)
+    Number.isFinite(value.new_risk_pct) &&
+    (value.action === undefined || typeof value.action === "string") &&
+    (value.scenario_key === undefined || typeof value.scenario_key === "string")
   );
 }
 

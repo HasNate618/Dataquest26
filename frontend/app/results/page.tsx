@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, Legend } from "recharts";
 
@@ -105,11 +105,11 @@ function groupColor(group: string): string {
 
 function groupLabel(group: string): string {
   const labels: Record<string, string> = {
-    gaming_load: "Gaming Intensity",
+    gaming_load: "Daily Gaming Hours",
     gaming_spend: "In-Game Spending",
     health_habits: "Health & Exercise",
     game_context: "Game Choice & Platform",
-    context: "Personal Background",
+    context: "Years Gaming",
     sleep_process: "Sleep Quality",
     other: "Other",
   };
@@ -242,7 +242,6 @@ function IssueContributorPie({
 
 export default function ResultsPage() {
   const stored = useMemo(() => readStoredAnalysis(), []);
-  const [selectedScenario, setSelectedScenario] = useState<string | null>(null);
 
   if (!stored) {
     return (
@@ -323,6 +322,24 @@ export default function ResultsPage() {
           </div>
         </div>
 
+        {/* Input Profile */}
+        <div className="card-pixel mb-14 md:mb-16 w-full">
+          <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>INPUT PROFILE</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+            {result.feature_order.map((fieldName) => (
+              <div key={fieldName} className="border-2 border-gray-700 p-4 md:p-5 bg-black/40">
+                <p className="font-mono text-[10px] text-gray-500 tracking-widest mb-3">{toTitle(fieldName)}</p>
+                <p className="font-mono text-sm text-gray-100 font-semibold">{String(result.input_profile[fieldName] ?? "")}</p>
+              </div>
+            ))}
+          </div>
+          <div className="border-t-2 border-gray-700 mt-10 pt-10">
+            <p className="font-mono text-xs text-gray-600 leading-relaxed">
+              Results are generated from the trained grouped wellbeing model and are intended for educational insights, not clinical diagnosis.
+            </p>
+          </div>
+        </div>
+
         {/* Issue Breakdown */}
         <div className="card-pixel mb-14 md:mb-16 w-full">
           <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>ISSUE RISK BREAKDOWN</p>
@@ -333,35 +350,13 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Recommendations */}
-        {recommendations.length > 0 ? (
-          <div className="card-pixel mb-10 md:mb-14 w-full">
-            <p className="font-pixel text-gray-300 text-xs tracking-widest mb-10" style={{ fontSize: "0.95rem", letterSpacing: "0.12em" }}>AI RECOMMENDATIONS — RANKED BY IMPACT</p>
-            <div className="space-y-6">
-              {recommendations.slice(0, 4).map((rec) => (
-                <div
-                  key={`${rec.rank}-${rec.title}`}
-                  className={`p-6 border-2 rounded ${
-                    rec.type === "warning"
-                      ? "border-orange-500/60 bg-orange-950/20"
-                      : "border-emerald-500/60 bg-emerald-950/20"
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-4 mb-4">
-                    <div className="flex-1">
-                      <p className="font-mono text-sm text-white font-semibold mb-2">{rec.rank}. {rec.title}</p>
-                      {rec.action && (
-                        <p className="text-[11px] font-mono text-gray-400 mt-1">{rec.action}</p>
-                      )}
-                    </div>
-                    {rec.impact_pct > 0 && rec.type !== "warning" && (
-                      <span className="text-xs font-mono px-3 py-1.5 bg-emerald-900/50 text-emerald-300 rounded whitespace-nowrap font-semibold">
-                        -{rec.impact_pct.toFixed(1)}pp
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-mono text-[12px] text-gray-300 whitespace-pre-line leading-relaxed mt-3">{rec.detail}</p>
-                </div>
+        {/* Contributor Pie Charts */}
+        {issueContributorEntries.length > 0 ? (
+          <div className="card-pixel mb-14 md:mb-16 w-full">
+            <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>CONTRIBUTOR BREAKDOWN</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              {issueContributorEntries.map(([issueName, contributorData]) => (
+                <IssueContributorPie key={issueName} issueName={issueName} data={contributorData} />
               ))}
             </div>
           </div>
@@ -412,117 +407,49 @@ export default function ResultsPage() {
                       <Cell
                         key={entry.scenario}
                         fill={entry.delta <= 0 ? "#10b981" : "#f59e0b"}
-                        onClick={() =>
-                          setSelectedScenario(
-                            selectedScenario === entry.fullScenario.scenario
-                              ? null
-                              : entry.fullScenario.scenario
-                          )
-                        }
-                        style={{ cursor: "pointer", opacity: 0.85 }}
+                        style={{ opacity: 0.85 }}
                       />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+        ) : null}
 
-            {/* Scenario details - Interactive */}
-            <div className="space-y-3">
-              <p className="text-xs text-gray-500 font-mono">SCENARIO DETAILS (click bar to expand):</p>
-              {scenarioDataForChart.map((row) => (
-                <button
-                  key={row.scenario}
-                  onClick={() =>
-                    setSelectedScenario(
-                      selectedScenario === row.fullScenario.scenario ? null : row.fullScenario.scenario
-                    )
-                  }
-                  className="w-full text-left p-4 border border-gray-700 bg-black/40 hover:border-gray-500 transition-colors"
+        {/* Recommendations */}
+        {recommendations.length > 0 ? (
+          <div className="card-pixel mb-10 md:mb-14 w-full">
+            <p className="font-pixel text-gray-300 text-xs tracking-widest mb-10" style={{ fontSize: "0.95rem", letterSpacing: "0.12em" }}>AI RECOMMENDATIONS — RANKED BY IMPACT</p>
+            <div className="space-y-6">
+              {recommendations.slice(0, 4).map((rec) => (
+                <div
+                  key={`${rec.rank}-${rec.title}`}
+                  className={`p-6 border-2 rounded ${
+                    rec.type === "warning"
+                      ? "border-orange-500/60 bg-orange-950/20"
+                      : "border-emerald-500/60 bg-emerald-950/20"
+                  }`}
                 >
-                  <div className="flex justify-between items-center gap-4">
-                    <span className="font-mono text-sm text-white">{row.scenario}</span>
-                    <span
-                      className={`font-mono text-sm font-semibold ${
-                        row.delta <= 0 ? "text-blue-400" : "text-purple-400"
-                      }`}
-                    >
-                      {row.delta > 0 ? "+" : ""}{row.delta.toFixed(2)}pp
-                    </span>
-                  </div>
-                  {selectedScenario === row.fullScenario.scenario && (
-                    <div className="mt-3 text-xs text-gray-300 space-y-1 border-t border-gray-700 pt-3">
-                      <p>
-                        <span className="text-gray-500">Current risk:</span> {baselineRisk.toFixed(1)}%
-                      </p>
-                      <p>
-                        <span className="text-gray-500">New risk:</span> {row.fullScenario.percent.toFixed(1)}%
-                      </p>
-                      <p>
-                        <span className="text-gray-500">Change:</span>{" "}
-                        <span className={row.delta <= 0 ? "text-blue-400" : "text-purple-400"}>
-                          {row.delta > 0 ? "+" : ""}{row.delta.toFixed(2)} percentage points
-                        </span>
-                      </p>
+                  <div className="flex justify-between items-start gap-4 mb-4">
+                    <div className="flex-1">
+                      <p className="font-mono text-sm text-white font-semibold mb-2">{rec.rank}. {rec.title}</p>
+                      {rec.action && (
+                        <p className="text-[11px] font-mono text-gray-400 mt-1">{rec.action}</p>
+                      )}
                     </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Contributor Pie Charts */}
-        {issueContributorEntries.length > 0 ? (
-          <div className="card-pixel mb-14 md:mb-16 w-full">
-            <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>CONTRIBUTOR BREAKDOWN</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              {issueContributorEntries.map(([issueName, contributorData]) => (
-                <IssueContributorPie key={issueName} issueName={issueName} data={contributorData} />
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Top Contributors */}
-        {result.issue_top_contributors ? (
-          <div className="card-pixel mb-14 md:mb-16 w-full">
-            <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>TOP CONTRIBUTORS</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-              {Object.entries(result.issue_top_contributors).map(([issueName, contributors]) => (
-                <div key={issueName} className="border-2 border-gray-700 p-5 md:p-6 bg-black/40">
-                  <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">{toTitle(issueName)}</p>
-                  <div className="space-y-5">
-                    {contributors.slice(0, 3).map((contributor) => (
-                      <div key={`${issueName}-${contributor.feature}`} className="flex justify-between gap-4 text-xs font-mono">
-                        <span className="text-gray-200">{toTitle(contributor.feature)} <span className="text-gray-500">({toTitle(contributor.group)})</span></span>
-                        <span className="text-blue-400 font-semibold">{contributor.share_pct.toFixed(1)}%</span>
-                      </div>
-                    ))}
+                    {rec.impact_pct > 0 && rec.type !== "warning" && (
+                      <span className="text-xs font-mono px-3 py-1.5 bg-emerald-900/50 text-emerald-300 rounded whitespace-nowrap font-semibold">
+                        -{rec.impact_pct.toFixed(1)}pp
+                      </span>
+                    )}
                   </div>
+                  <p className="font-mono text-[12px] text-gray-300 whitespace-pre-line leading-relaxed mt-3">{rec.detail}</p>
                 </div>
               ))}
             </div>
           </div>
         ) : null}
-
-        {/* Input Profile */}
-        <div className="card-pixel mb-14 md:mb-16 w-full">
-          <p className="font-pixel text-gray-300 tracking-widest mb-10" style={{ fontSize: "1.1rem", letterSpacing: "0.15em" }}>INPUT PROFILE</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-            {result.feature_order.map((fieldName) => (
-              <div key={fieldName} className="border-2 border-gray-700 p-4 md:p-5 bg-black/40">
-                <p className="font-mono text-[10px] text-gray-500 tracking-widest mb-3">{toTitle(fieldName)}</p>
-                <p className="font-mono text-sm text-gray-100 font-semibold">{String(result.input_profile[fieldName] ?? "")}</p>
-              </div>
-            ))}
-          </div>
-          <div className="border-t-2 border-gray-700 mt-10 pt-10">
-            <p className="font-mono text-xs text-gray-600 leading-relaxed">
-              Results are generated from the trained grouped wellbeing model and are intended for educational insights, not clinical diagnosis.
-            </p>
-          </div>
-        </div>
 
         {/* Action Buttons */}
         <div className="flex gap-6 md:gap-8 flex-wrap justify-center pb-8 w-full mt-6">
