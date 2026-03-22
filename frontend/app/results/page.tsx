@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, Legend } from "recharts";
 
 interface AnalysisIssue {
   issue: string;
@@ -90,14 +90,14 @@ function formatTooltipValue(value: unknown): string {
 
 function groupColor(group: string): string {
   const palette: Record<string, string> = {
-    gaming_load: "#ff6464",
-    gaming_spend: "#ffd166",
-    health_habits: "#9be564",
-    game_context: "#8ecae6",
-    context: "#bdb2ff",
-    other: "#94a3b8",
+    gaming_load: "#8b5cf6",      // purple
+    gaming_spend: "#6366f1",     // indigo
+    health_habits: "#3b82f6",    // blue
+    game_context: "#06b6d4",     // cyan
+    context: "#a78bfa",          // light purple
+    other: "#94a3b8",            // slate
   };
-  return palette[group] ?? "#a8dadc";
+  return palette[group] ?? "#60a5fa";
 }
 
 function scenarioLabel(value: string): string {
@@ -108,20 +108,20 @@ function Meter({ issue }: { issue: AnalysisIssue }) {
   const barColor = levelColor(issue.label);
 
   return (
-    <div className="mb-5 md:mb-6">
-      <div className="flex justify-between font-mono text-xs text-gray-400 mb-3">
-        <span className="tracking-widest">{toTitle(issue.issue)}</span>
-        <span style={{ color: barColor, fontSize: "0.65rem" }} className="font-pixel">
+    <div className="mb-7">
+      <div className="flex justify-between items-center font-mono text-xs text-gray-400 mb-3">
+        <span className="tracking-wide font-semibold">{toTitle(issue.issue)}</span>
+        <span style={{ color: barColor }} className="font-pixel text-sm">
           {issue.label.toUpperCase()} ({issue.percent.toFixed(1)}%)
         </span>
       </div>
-      <div className="meter-track">
+      <div className="meter-track" style={{ height: "14px", borderWidth: "2px" }}>
         <div
           className="meter-fill"
           style={{
             width: `${issue.percent}%`,
             background: barColor,
-            transition: "width 0.9s ease",
+            transition: "width 1s ease",
           }}
         />
       </div>
@@ -175,12 +175,25 @@ function IssueContributorPie({
   }));
 
   return (
-    <div className="border border-gray-700 p-4 md:p-5 bg-black/40">
-      <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-5">{toTitle(issueName)}</p>
-      <div style={{ width: "100%", height: 220 }} className="md:h-[240px]">
+    <div className="border-2 border-gray-700 p-5 md:p-6 bg-black/40">
+      <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">{toTitle(issueName)}</p>
+      <div style={{ width: "100%", height: 260 }}>
         <ResponsiveContainer>
           <PieChart>
-            <Pie data={chartData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={85} label>
+            <Pie 
+              data={chartData} 
+              dataKey="value" 
+              nameKey="name" 
+              innerRadius={50} 
+              outerRadius={90} 
+              label={(props) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const percent = ((props as any).percent as number) || 0;
+                return `${(percent * 100).toFixed(0)}%`;
+              }}
+              labelLine={false}
+              fill="#8884d8"
+            >
               {chartData.map((entry) => (
                 <Cell key={`${issueName}-${entry.name}`} fill={entry.fill} />
               ))}
@@ -189,10 +202,14 @@ function IssueContributorPie({
               formatter={(value, name) => [formatTooltipValue(value), String(name)]}
               contentStyle={{
                 background: "#050505",
-                border: "1px solid #444",
+                border: "1px solid #555",
                 color: "#f1f5f9",
                 fontSize: "11px",
               }}
+            />
+            <Legend 
+              wrapperStyle={{ fontSize: "11px" }}
+              iconType="circle"
             />
           </PieChart>
         </ResponsiveContainer>
@@ -259,35 +276,35 @@ export default function ResultsPage() {
         </Link>
 
         {/* Header */}
-        <div className="mb-12 md:mb-16 text-center pt-8 w-full">
-          <p className="font-mono text-gray-600 text-xs tracking-widest mb-4 md:mb-6">MISSION COMPLETE — MODEL INFERENCE REPORT</p>
-          <h1 className="font-pixel text-white mb-4 md:mb-6" style={{ fontSize: "clamp(1.5rem, 4vw, 2.5rem)", lineHeight: "1.4" }}>
+        <div className="mb-16 md:mb-20 text-center pt-8 w-full">
+          <p className="font-mono text-gray-600 text-xs tracking-widest mb-6 md:mb-8">MISSION COMPLETE — MODEL INFERENCE REPORT</p>
+          <h1 className="font-pixel text-white mb-6 md:mb-8" style={{ fontSize: "clamp(2rem, 5vw, 3rem)", lineHeight: "1.3", letterSpacing: "0.05em" }}>
             YOUR RESULTS
           </h1>
           <p className="font-mono text-xs text-gray-500">Generated at {generatedAt}</p>
         </div>
 
         {/* Summary Card */}
-        <div className="card-pixel mb-10 md:mb-14 w-full">
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-6">MODEL SUMMARY</p>
-          <div className="space-y-4 md:space-y-5">
-            <p className="font-mono text-sm text-gray-300">Primary model: <span className="text-white">{result.model}</span></p>
+        <div className="card-pixel mb-14 md:mb-16 w-full">
+          <p className="font-pixel text-gray-400 tracking-widest mb-8" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>MODEL SUMMARY</p>
+          <div className="space-y-5 md:space-y-6">
+            <p className="font-mono text-sm text-gray-300">Primary model: <span className="text-white font-semibold">{result.model}</span></p>
             <p className="font-mono text-sm text-gray-300">
               Overall wellbeing risk:{" "}
-              <span style={{ color: levelColor(result.overall.label) }} className="font-semibold">
+              <span style={{ color: levelColor(result.overall.label) }} className="font-bold">
                 {result.overall.label.toUpperCase()} ({result.overall.percent.toFixed(1)}%)
               </span>
             </p>
             <p className="font-mono text-sm text-gray-300">
-              Highest issue risk: <span className="text-white">{topIssueLabel}</span>
+              Highest issue risk: <span className="text-white font-semibold">{topIssueLabel}</span>
             </p>
           </div>
         </div>
 
         {/* Issue Breakdown */}
-        <div className="card-pixel mb-10 md:mb-14 w-full">
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">ISSUE RISK BREAKDOWN</p>
-          <div className="space-y-2">
+        <div className="card-pixel mb-14 md:mb-16 w-full">
+          <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>ISSUE RISK BREAKDOWN</p>
+          <div className="space-y-4">
             {result.issues.map((issue) => (
               <Meter key={issue.issue} issue={issue} />
             ))}
@@ -430,9 +447,9 @@ export default function ResultsPage() {
 
         {/* Contributor Pie Charts */}
         {issueContributorEntries.length > 0 ? (
-          <div className="card-pixel mb-10 md:mb-14 w-full">
-            <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">CAUSE GROUP CONTRIBUTOR PIE CHARTS</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          <div className="card-pixel mb-14 md:mb-16 w-full">
+            <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>CONTRIBUTOR BREAKDOWN</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {issueContributorEntries.map(([issueName, contributorData]) => (
                 <IssueContributorPie key={issueName} issueName={issueName} data={contributorData} />
               ))}
@@ -442,17 +459,17 @@ export default function ResultsPage() {
 
         {/* Top Contributors */}
         {result.issue_top_contributors ? (
-          <div className="card-pixel mb-10 md:mb-14 w-full">
-            <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">TOP PERSONALIZED CONTRIBUTORS</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+          <div className="card-pixel mb-14 md:mb-16 w-full">
+            <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>TOP CONTRIBUTORS</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
               {Object.entries(result.issue_top_contributors).map(([issueName, contributors]) => (
-                <div key={issueName} className="border border-gray-700 p-5 bg-black/40">
-                  <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-4">{toTitle(issueName)}</p>
-                  <div className="space-y-3">
+                <div key={issueName} className="border-2 border-gray-700 p-5 md:p-6 bg-black/40">
+                  <p className="font-mono text-xs text-gray-500 tracking-widest mb-5">{toTitle(issueName)}</p>
+                  <div className="space-y-4">
                     {contributors.slice(0, 3).map((contributor) => (
                       <div key={`${issueName}-${contributor.feature}`} className="flex justify-between gap-4 text-xs font-mono">
-                        <span className="text-gray-200">{toTitle(contributor.feature)} ({toTitle(contributor.group)})</span>
-                        <span className="text-gray-400">{contributor.share_pct.toFixed(1)}%</span>
+                        <span className="text-gray-200">{toTitle(contributor.feature)} <span className="text-gray-500">({toTitle(contributor.group)})</span></span>
+                        <span className="text-blue-400 font-semibold">{contributor.share_pct.toFixed(1)}%</span>
                       </div>
                     ))}
                   </div>
@@ -463,17 +480,17 @@ export default function ResultsPage() {
         ) : null}
 
         {/* Input Profile */}
-        <div className="card-pixel mb-10 md:mb-14 w-full">
-          <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">MODEL INPUT PROFILE</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        <div className="card-pixel mb-14 md:mb-16 w-full">
+          <p className="font-pixel text-gray-400 tracking-widest mb-10" style={{ fontSize: "0.9rem", letterSpacing: "0.15em" }}>INPUT PROFILE</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {result.feature_order.map((fieldName) => (
-              <div key={fieldName} className="border border-gray-700 p-4 bg-black/40">
-                <p className="font-mono text-[11px] text-gray-500 tracking-widest mb-2">{toTitle(fieldName)}</p>
-                <p className="font-mono text-sm text-gray-200">{String(result.input_profile[fieldName] ?? "")}</p>
+              <div key={fieldName} className="border-2 border-gray-700 p-4 md:p-5 bg-black/40">
+                <p className="font-mono text-[10px] text-gray-500 tracking-widest mb-3">{toTitle(fieldName)}</p>
+                <p className="font-mono text-sm text-gray-100 font-semibold">{String(result.input_profile[fieldName] ?? "")}</p>
               </div>
             ))}
           </div>
-          <div className="border-t border-gray-700 mt-8 pt-8">
+          <div className="border-t-2 border-gray-700 mt-10 pt-10">
             <p className="font-mono text-xs text-gray-600 leading-relaxed">
               Results are generated from the trained grouped wellbeing model and are intended for educational insights, not clinical diagnosis.
             </p>
@@ -481,14 +498,14 @@ export default function ResultsPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4 md:gap-6 flex-wrap justify-center pb-8 w-full">
+        <div className="flex gap-6 md:gap-8 flex-wrap justify-center pb-8 w-full mt-6">
           <Link href="/assess">
-            <button className="btn-pixel" style={{ fontSize: "0.85rem", padding: "1.2rem 2.5rem" }}>← REPLAY MISSION</button>
+            <button className="btn-pixel font-pixel" style={{ fontSize: "0.9rem", padding: "1.3rem 2.8rem", letterSpacing: "0.1em" }}>← REPLAY MISSION</button>
           </Link>
           <Link href="/">
             <button
-              className="font-pixel border border-gray-700 text-gray-400 hover:border-white hover:text-white transition-colors"
-              style={{ fontSize: "0.85rem", padding: "1.2rem 2.5rem" }}
+              className="font-pixel border-2 border-gray-700 text-gray-400 hover:border-white hover:text-white transition-colors"
+              style={{ fontSize: "0.9rem", padding: "1.3rem 2.8rem", letterSpacing: "0.1em" }}
             >
               RETURN TO BASE
             </button>

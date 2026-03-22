@@ -138,34 +138,57 @@ def _generate_recommendations(
 
     baseline_prob = baseline_scenario["probability"]
     
-    # Rank scenarios by impact (most negative delta first)
+    # Get all scenarios except baseline, ranked by impact (most negative delta first)
     ranked = sorted(
         [s for s in scenarios if s["scenario"] != "baseline"],
         key=lambda x: x["delta_vs_baseline"],
-    )[:3]
+    )
     
     recommendations = []
+    
+    # Map scenarios to clear, descriptive explanations
+    scenario_explanations = {
+        "exercise_+2h": {
+            "title": "🏃 Add 2 more hours of exercise per week",
+            "changes": "You exercise 2 extra hours each week",
+            "why": "Physical activity improves sleep and mental health",
+        },
+        "gaming_hours_-2": {
+            "title": "🎮 Reduce daily gaming by 2 hours",
+            "changes": "You game 2 hours less each day",
+            "why": "Less gaming → more time for sleep, exercise, and social connection",
+        },
+        "gaming_hours_-4": {
+            "title": "🎮 Reduce daily gaming by 4 hours",
+            "changes": "You game 4 hours less each day",
+            "why": "Significant reduction in screen time and gaming load",
+        },
+        "spending_-30pct": {
+            "title": "💳 Reduce game spending by 30%",
+            "changes": "You spend 30% less on in-game purchases",
+            "why": "May reduce gaming attachment and encourage healthier habits",
+        },
+        "combined_healthy_shift": {
+            "title": "⭐ Complete healthy lifestyle shift (ALL THREE)",
+            "changes": "Reduce gaming by 3h + Add 2h exercise + Cut spending by 20%",
+            "why": "Combines all interventions for maximum wellbeing improvement",
+        },
+    }
+    
     for i, scenario in enumerate(ranked, 1):
-        scenario_name = scenario["scenario"].replace("_", " ").title()
         impact_pct = abs(scenario["delta_vs_baseline"] * 100)
         new_prob_pct = scenario["percent"]
         
-        # Generate description based on scenario
-        if "gaming_hours" in scenario["scenario"]:
-            hours_reduced = int(scenario["scenario"].split("_")[2])
-            desc = f"Reduce daily gaming by {hours_reduced} hours"
-            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp)"
-        elif "exercise" in scenario["scenario"]:
-            desc = "Add 2 more hours of exercise per week"
-            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp)"
-        elif "spending" in scenario["scenario"]:
-            desc = "Reduce game spending by 30%"
-            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp)"
-        elif "combined" in scenario["scenario"]:
-            desc = "Complete healthy lifestyle shift (all changes combined)"
-            detail = f"Could lower risk from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% (-{impact_pct:.1f}pp) — Most effective!"
-        else:
+        explanation = scenario_explanations.get(scenario["scenario"], None)
+        if not explanation:
             continue
+        
+        desc = explanation["title"]
+        detail = (
+            f"{explanation['changes']}. "
+            f"Your risk would go from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% "
+            f"(-{impact_pct:.1f}pp). {explanation['why']}"
+        )
         
         recommendations.append(
             {
@@ -174,6 +197,7 @@ def _generate_recommendations(
                 "detail": detail,
                 "impact_pct": round(impact_pct, 1),
                 "new_risk_pct": round(new_prob_pct, 1),
+                "scenario_key": scenario["scenario"],
             }
         )
     
@@ -186,8 +210,8 @@ def _generate_recommendations(
             {
                 "rank": len(recommendations) + 1,
                 "type": "warning",
-                "title": f"⚠️ High {issue_name} Risk Detected",
-                "detail": f"{issue_name} probability is {top_issue['percent']:.1f}%. Consider prioritizing recommendations above.",
+                "title": f"⚠️ Alert: High {issue_name} Risk",
+                "detail": f"Your {issue_name.lower()} risk is {top_issue['percent']:.1f}%, which is high. Focus on the recommendations above to reduce this.",
                 "impact_pct": 0,
                 "new_risk_pct": top_issue["percent"],
             }
