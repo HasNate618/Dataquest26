@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Mono } from "next/font/google";
 import "./globals.css";
+import PerformanceModeToggle from "./components/PerformanceModeToggle";
 
 const spaceMono = Space_Mono({
   variable: "--font-mono",
@@ -20,7 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${spaceMono.variable} h-full`}>
-      <body className="min-h-full bg-black text-white">{children}</body>
+      <body className="min-h-full bg-black text-white">
+        {children}
+        <PerformanceModeToggle />
+      </body>
     </html>
   );
 }

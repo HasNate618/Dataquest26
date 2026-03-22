@@ -50,6 +50,7 @@ interface FormData {
   daily_gaming_hours: string;
   monthly_game_spending_usd: string;
   exercise_hours_weekly: string;
+  sleep_hours: string;
   game_genre: string;
   primary_game: string;
   gaming_platform: string;
@@ -62,6 +63,7 @@ const defaultForm: FormData = {
   daily_gaming_hours: "",
   monthly_game_spending_usd: "",
   exercise_hours_weekly: "",
+  sleep_hours: "",
   game_genre: "",
   primary_game: "",
   gaming_platform: "",
@@ -74,6 +76,7 @@ interface AnalysisRequestPayload {
   daily_gaming_hours: number;
   monthly_game_spending_usd: number;
   exercise_hours_weekly: number;
+  sleep_hours: number;
   game_genre: string;
   primary_game: string;
   gaming_platform: string;
@@ -148,6 +151,7 @@ const NUMERIC_BOUNDS = {
   daily_gaming_hours: [0, 24],
   monthly_game_spending_usd: [0, 2000],
   exercise_hours_weekly: [0, 40],
+  sleep_hours: [0, 24],
 } as const;
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -192,6 +196,7 @@ function toPayload(form: FormData): AnalysisRequestPayload {
     daily_gaming_hours: Number(form.daily_gaming_hours),
     monthly_game_spending_usd: Number(form.monthly_game_spending_usd),
     exercise_hours_weekly: Number(form.exercise_hours_weekly),
+    sleep_hours: Number(form.sleep_hours),
     game_genre: form.game_genre.trim(),
     primary_game: form.primary_game.trim(),
     gaming_platform: form.gaming_platform.trim(),
@@ -485,6 +490,11 @@ export default function AssessPage() {
                   onChange={(e) => set("exercise_hours_weekly", e.target.value)}
                   required
                 />
+              </div>
+              <div>
+                <Label>HOURS OF SLEEP</Label>
+                <input type="number" min="0" max="24" step="0.5" className="input-pixel" placeholder="e.g. 7.5"
+                  value={form.sleep_hours} onChange={(e) => set("sleep_hours", e.target.value)} required />
               </div>
               <div>
                 <Label>GAME GENRE</Label>
