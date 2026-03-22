@@ -149,29 +149,34 @@ def _generate_recommendations(
     # Map scenarios to clear, descriptive explanations
     scenario_explanations = {
         "exercise_+2h": {
-            "title": "🏃 Add 2 more hours of exercise per week",
+            "title": "Add 2 more hours of exercise per week",
+            "action": "Exercise +2 hours weekly",
             "changes": "You exercise 2 extra hours each week",
-            "why": "Physical activity improves sleep and mental health",
+            "why": "Physical activity improves sleep quality and mental health, reducing wellbeing risks",
         },
         "gaming_hours_-2": {
-            "title": "🎮 Reduce daily gaming by 2 hours",
+            "title": "Reduce daily gaming by 2 hours",
+            "action": "Gaming -2 hours daily",
             "changes": "You game 2 hours less each day",
-            "why": "Less gaming → more time for sleep, exercise, and social connection",
+            "why": "More time for sleep, exercise, and social connections",
         },
         "gaming_hours_-4": {
-            "title": "🎮 Reduce daily gaming by 4 hours",
+            "title": "Reduce daily gaming by 4 hours",
+            "action": "Gaming -4 hours daily",
             "changes": "You game 4 hours less each day",
-            "why": "Significant reduction in screen time and gaming load",
+            "why": "Significant reduction in screen time and overall gaming commitment",
         },
         "spending_-30pct": {
-            "title": "💳 Reduce game spending by 30%",
+            "title": "Reduce game spending by 30%",
+            "action": "Spending -30%",
             "changes": "You spend 30% less on in-game purchases",
-            "why": "May reduce gaming attachment and encourage healthier habits",
+            "why": "Reduces gaming attachment and frees time for healthier activities",
         },
         "combined_healthy_shift": {
-            "title": "⭐ Complete healthy lifestyle shift (ALL THREE)",
-            "changes": "Reduce gaming by 3h + Add 2h exercise + Cut spending by 20%",
-            "why": "Combines all interventions for maximum wellbeing improvement",
+            "title": "Combined lifestyle improvements",
+            "action": "Gaming -3h, Exercise +2h, Spending -20%",
+            "changes": "Reduce gaming by 3 hours, add 2 hours of exercise, cut spending by 20%",
+            "why": "Combines multiple interventions for maximum wellbeing improvement",
         },
     }
     
@@ -183,17 +188,19 @@ def _generate_recommendations(
         if not explanation:
             continue
         
-        desc = explanation["title"]
+        # Build detail in structured format
         detail = (
-            f"{explanation['changes']}. "
-            f"Your risk would go from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% "
-            f"(-{impact_pct:.1f}pp). {explanation['why']}"
+            f"What changes: {explanation['changes']}\n"
+            f"Impact: Risk decreases from {baseline_prob*100:.1f}% to {new_prob_pct:.1f}% "
+            f"(saves {impact_pct:.1f} percentage points)\n"
+            f"Why it helps: {explanation['why']}"
         )
         
         recommendations.append(
             {
                 "rank": i,
-                "title": desc,
+                "title": explanation["title"],
+                "action": explanation["action"],
                 "detail": detail,
                 "impact_pct": round(impact_pct, 1),
                 "new_risk_pct": round(new_prob_pct, 1),
@@ -210,8 +217,8 @@ def _generate_recommendations(
             {
                 "rank": len(recommendations) + 1,
                 "type": "warning",
-                "title": f"⚠️ Alert: High {issue_name} Risk",
-                "detail": f"Your {issue_name.lower()} risk is {top_issue['percent']:.1f}%, which is high. Focus on the recommendations above to reduce this.",
+                "title": f"High {issue_name} Risk Alert",
+                "detail": f"Your {issue_name.lower()} risk is {top_issue['percent']:.1f}%. This is above 50% (high threshold). Prioritize the recommendations above to reduce this risk.",
                 "impact_pct": 0,
                 "new_risk_pct": top_issue["percent"],
             }

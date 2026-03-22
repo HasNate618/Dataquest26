@@ -34,10 +34,12 @@ interface ScenarioResult {
 interface Recommendation {
   rank: number;
   title: string;
+  action?: string;
   detail: string;
   impact_pct: number;
   new_risk_pct: number;
   type?: string;
+  scenario_key?: string;
 }
 
 interface AnalysisResult {
@@ -314,26 +316,31 @@ export default function ResultsPage() {
         {/* Recommendations */}
         {recommendations.length > 0 ? (
           <div className="card-pixel mb-10 md:mb-14 w-full">
-            <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">🎯 AI RECOMMENDATIONS</p>
+            <p className="font-mono text-xs text-gray-500 tracking-widest mb-8">AI RECOMMENDATIONS — RANKED BY IMPACT</p>
             <div className="space-y-4">
               {recommendations.slice(0, 4).map((rec) => (
                 <div
                   key={`${rec.rank}-${rec.title}`}
-                  className={`p-4 border ${
+                  className={`p-5 border rounded ${
                     rec.type === "warning"
                       ? "border-orange-700/50 bg-orange-950/20"
                       : "border-green-700/50 bg-green-950/20"
-                  } rounded`}
+                  }`}
                 >
-                  <div className="flex justify-between items-start gap-4 mb-2">
-                    <p className="font-mono text-sm text-white font-semibold">{rec.title}</p>
+                  <div className="flex justify-between items-start gap-4 mb-3">
+                    <div className="flex-1">
+                      <p className="font-mono text-sm text-white font-semibold mb-1">{rec.rank}. {rec.title}</p>
+                      {rec.action && (
+                        <p className="text-[11px] font-mono text-gray-400">{rec.action}</p>
+                      )}
+                    </div>
                     {rec.impact_pct > 0 && rec.type !== "warning" && (
-                      <span className="text-xs font-mono px-2 py-1 bg-green-900/50 text-green-300 rounded">
+                      <span className="text-xs font-mono px-2 py-1 bg-green-900/50 text-green-300 rounded whitespace-nowrap">
                         -{rec.impact_pct.toFixed(1)}pp
                       </span>
                     )}
                   </div>
-                  <p className="font-mono text-xs text-gray-300">{rec.detail}</p>
+                  <p className="font-mono text-[12px] text-gray-300 whitespace-pre-line leading-relaxed">{rec.detail}</p>
                 </div>
               ))}
             </div>
