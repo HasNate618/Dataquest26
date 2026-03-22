@@ -24,6 +24,7 @@ NUMERIC_RANGES = {
     "monthly_game_spending_usd": (0.0, 2000.0),
     "exercise_hours_weekly": (0.0, 40.0),
     "years_gaming": (0.0, 70.0),
+    "sleep_hours": (0.0, 24.0),
 }
 
 

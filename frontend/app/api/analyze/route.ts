@@ -12,6 +12,7 @@ const NUMERIC_RANGES = {
   monthly_game_spending_usd: [0, 2000],
   exercise_hours_weekly: [0, 40],
   years_gaming: [0, 70],
+  sleep_hours: [0, 24],
 } as const;
 
 type NumericField = keyof typeof NUMERIC_RANGES;
@@ -23,6 +24,7 @@ interface AnalysisRequestPayload {
   monthly_game_spending_usd: number;
   exercise_hours_weekly: number;
   years_gaming: number;
+  sleep_hours: number;
   gender: string;
   game_genre: string;
   primary_game: string;
@@ -112,6 +114,7 @@ function validatePayload(payload: unknown): AnalysisRequestPayload {
     monthly_game_spending_usd: parseNumericField(payload, "monthly_game_spending_usd"),
     exercise_hours_weekly: parseNumericField(payload, "exercise_hours_weekly"),
     years_gaming: parseNumericField(payload, "years_gaming"),
+    sleep_hours: parseNumericField(payload, "sleep_hours"),
     gender: parseStringField(payload, "gender"),
     game_genre: parseStringField(payload, "game_genre"),
     primary_game: parseStringField(payload, "primary_game"),

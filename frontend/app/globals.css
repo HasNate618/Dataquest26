@@ -40,6 +40,7 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  will-change: transform;
 }
 
 .stars-small {
@@ -65,7 +66,7 @@ body {
     radial-gradient(1px 1px at 30% 55%, #fff 0%, transparent 100%),
     radial-gradient(1px 1px at 48% 48%, #aaa 0%, transparent 100%);
   background-size: 600px 400px;
-  animation: drift-stars 80s linear infinite;
+  animation: drift-stars 140s linear infinite;
 }
 
 .stars-medium {
@@ -81,7 +82,7 @@ body {
     radial-gradient(2px 2px at 33% 12%,   #fff 0%, transparent 100%),
     radial-gradient(2px 2px at 72% 72%,   #fff 0%, transparent 100%);
   background-size: 800px 600px;
-  animation: drift-stars 120s linear infinite;
+  animation: none;
 }
 
 @keyframes drift-stars {
@@ -94,7 +95,8 @@ body {
   position: fixed;
   pointer-events: none;
   z-index: 1;
-  opacity: 0.6;
+  opacity: 0.45;
+  will-change: transform;
 }
 
 .asteroid svg {
@@ -164,6 +166,7 @@ body {
     rgba(0, 0, 0, 0.08) 2px,
     rgba(0, 0, 0, 0.08) 4px
   );
+  opacity: 0.45;
 }
 
 /* ── Typography helpers ── */
@@ -276,4 +279,27 @@ body {
   height: 100%;
   background: #fff;
   transition: width 0.8s ease;
+}
+
+html[data-perf-mode="balanced"] .stars-medium,
+html[data-perf-mode="balanced"] .scanlines,
+html[data-perf-mode="balanced"] .asteroid {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stars-small,
+  .stars-medium,
+  .scanlines,
+  .asteroid,
+  .blink,
+  .press-start-text {
+    animation: none !important;
+  }
+
+  .stars-medium,
+  .scanlines,
+  .asteroid {
+    display: none !important;
+  }
 }
